@@ -9,8 +9,12 @@ from models.models import create_model
 from options.train_options import TrainOptions
 
 opt = TrainOptions().parse()
+
+# Input image dimensions
 input_size = 256
-num_labels =  9
+
+# No. output structures
+num_labels = 11 
 
 def find(pattern, path):
     """look for NIfTI files in the given directory"""
@@ -45,7 +49,7 @@ def write_file(mask, dir_name, file_name, input_img):
     if not os.path.exists(dir_name):
         os.makedirs(dir_name)
     out_file = os.path.join(dir_name, file_name + '.nii.gz')
-    mask = np.flip(mask, 2)
+    mask = np.flip(mask,0)
     mask_img = sitk.GetImageFromArray(mask)
     mask_img.CopyInformation(input_img)
     sitk.WriteImage(mask_img, out_file)
@@ -64,9 +68,6 @@ def add_CT_offset(scan):
     return offset_scan
 
 def main(argv):
-    argv.append(r'L:/Aditi/CT_HeadAndNeck_SelfAttention/temp_tests/input')
-    argv.append(r'L:/Aditi/CT_HeadAndNeck_SelfAttention/temp_tests/output')
-
     num_args = len(argv)
     if num_args == 1:  # container
         input_nii_path = '/scratch/inputNii/'
@@ -113,7 +114,7 @@ def main(argv):
         img_flip_norm_arr = img_norm_arr.transpose(2, 0, 1)
         img_flip_norm_arr = img_flip_norm_arr.reshape(img_flip_norm_arr.shape[0],1,
                                                       img_flip_norm_arr.shape[1],
-                                                      img_flip_norm_arr.shape[2]) #
+                                                      img_flip_norm_arr.shape[2])
 
         print("******Final scan shape******")
         print(np.shape(img_flip_norm_arr))
@@ -122,8 +123,11 @@ def main(argv):
         print("dummy label shape")
         print(np.shape(label_arr))
 
-        images_ct_val = np.concatenate((np.array(img_flip_norm_arr), np.array(label_arr)), 1)
-        label_map = np.zeros((length, input_size, input_size), dtype=np.uint8)
+        images_ct_val = np.concatenate((np.array(img_flip_norm_arr),
+                                        np.array(label_arr)), 1)
+        label_map = np.zeros((length, input_size, input_size),
+                             dtype=np.uint8)
+
         print('data set size is: ', img_flip_norm_arr.shape)
         print('******Data loading complete******')
 
@@ -135,7 +139,7 @@ def main(argv):
 
         weight_ = weight_read_path
         model.load_CT_seg_A(weight_)
-        train_loader_c1 = torch.utils.data.DataLoader(images_ct_val,  # images_a_y_jj,  ## data + label
+        train_loader_c1 = torch.utils.data.DataLoader(images_ct_val,
                                                       batch_size=1,
                                                       shuffle=False,
                                                       num_workers=1)
