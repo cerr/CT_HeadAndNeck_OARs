@@ -1,4 +1,4 @@
-# CT_HeadAndNeckOARs
+# CT_HeadAndNeck_OARs
 This repository provides pre-trained deep learning models for segmenting the organs at risk in radiotherapy treatment planning
 of head and neck cancer patients. It operates on axial CT scans acquired for this purpose in the head-first supine (HFS) orientation.  
     
