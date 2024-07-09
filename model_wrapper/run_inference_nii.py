@@ -76,16 +76,16 @@ def main(argv):
         input_nii_path = sys.argv[1]
         output_nii_path = sys.argv[2]
 
+    # Load pre-trained weights
     script_dir = os.path.dirname(os.path.abspath(__file__))
-    wrapper_dir = os.path.join(script_dir, os.pardir)
+    wrapper_dir = os.path.dirname(script_dir)
     model_dir = os.path.join(wrapper_dir, "model")
-    model_weights_path = os.path.join(model_dir, 'seg_best_net_Seg_A.pth')
-    print(model_weights_path)
-
+    model_weights_path = os.path.join(model_dir, 'model_save')
     model = create_model(opt)
-    keyword = 'SCAN'
+    model.load_CT_seg_A(model_weights_path)
 
     # Identify input files
+    keyword = 'SCAN'
     files = find('*.nii', input_nii_path)
     if len(files) == 0:
         files = find('*.nii.gz', input_nii_path)
@@ -132,13 +132,6 @@ def main(argv):
         print('******Data loading complete******')
 
         print("****** Apply model ******")
-        # weight_read_path = '/software/model/model_save'
-        c_dir = os.path.dirname(os.path.realpath(__file__))
-        p_pir = os.path.dirname(c_dir)
-        weight_read_path = os.path.join(p_pir, 'model', 'model_save')
-
-        weight_ = weight_read_path
-        model.load_CT_seg_A(weight_)
         train_loader_c1 = torch.utils.data.DataLoader(images_ct_val,
                                                       batch_size=1,
                                                       shuffle=False,
