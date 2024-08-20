@@ -6,7 +6,7 @@
 #              from three different views.
 # Architecture :  Deeplab v3+ with resnet backbone
 # Usage: python run_fuse_inference_chewing_nii.py [inputpath] [outputpath]
-# Output: 2D masks saved as h5 files to output folder
+# Output: 2D masks saved as NIfTI files to output folder
 
 import sys
 from time import process_time
@@ -67,7 +67,7 @@ class Chewing(object):
             self.modelPath = os.path.join(cDir, 'models', 'MM_PM_Cor_model.pth.tar')
             self.dataPath = os.path.join(self.inputDir,'coronal')
         else:
-            raise ValueError('Invalid input view = %s' %view)
+            raise ValueError('Invalid input view = %s' %(view))
 
 
         # Define dataloadr
