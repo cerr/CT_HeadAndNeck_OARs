@@ -1,7 +1,7 @@
 # Author: Aditi Iyer
 # Email: iyera@mskcc.org
 # Date: Feb 10, 2020
-# Description: Custom dataloader for chewing structures.
+# Description: Custom dataloader for chewing and swallowing structures.
 
 import os
 import numpy as np
@@ -23,12 +23,10 @@ class struct(data.Dataset):
         self.args = args
         self.files = {}
 
-        #self.files = self.glob(rootdir=self.root, suffix='.h5')
         self.files = self.glob(rootdir=self.root, suffix='.nii.gz')
         scanImg = sitk.ReadImage(self.files[0])
         scanArr = np.flip(np.transpose(sitk.GetArrayFromImage(scanImg),(1,2,0)),axis=2)
         self.scan = scanArr
-        #print("Found %d images" % (len(self.files)))
         print("Found %d images" % (self.__len__()))
 
     def __len__(self):
@@ -47,22 +45,6 @@ class struct(data.Dataset):
         """Load the specified image and return a [H,W,3] Numpy array.
         """
         inputSize = 320
-        # img_path = self.files[index].rstrip()
-        # _dirname, _fname = os.path.split(img_path)
-
-        # # Read H5 image
-        # hf = h5py.File(img_path, 'r')
-        # datasetName = list(hf.keys())
-        # if "scan" in datasetName:
-        #     im = hf['/scan'][:]
-        # else:
-        #     if "OctaveExportScan" in datasetName:
-        #         im = hf['/OctaveExportScan']
-        #         im = im['value']
-        #         im = im[:]
-        #     else:
-        #         raise Exception("Scan dataset not found.")
-
         scanArr = self.scan
 
         if index==0:
@@ -82,9 +64,6 @@ class struct(data.Dataset):
         imagesize = (scanArr.shape[0],scanArr.shape[1])
 
         #Resize image
-        # image = np.array(im)
-        # image = image.reshape(im.shape).transpose()
-        # imagesize = np.shape(image)
         image = resize(image, (inputSize,inputSize), anti_aliasing = True)
 
         #Normalize image from 0-255 (to match pre-trained dataset of RGB images with intensity range 0-255)
