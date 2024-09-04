@@ -25,7 +25,9 @@ class struct(data.Dataset):
 
         self.files = self.glob(rootdir=self.root, suffix='.nii.gz')
         scanImg = sitk.ReadImage(self.files[0])
-        scanArr = np.flip(np.transpose(sitk.GetArrayFromImage(scanImg),(1,2,0)),axis=2)
+        scanArr = np.moveaxis(sitk.GetArrayFromImage(scanImg),0,2)  #re-order axes 
+        if self.args.view != 'coronal':
+            scanArr = np.flip(scanArr, axis=2) # Correction for z-axis order
         self.scan = scanArr
         print("Found %d images" % (self.__len__()))
 
