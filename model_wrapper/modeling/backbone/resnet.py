@@ -1,9 +1,13 @@
-from time import process_time
-import os
 import math
+import os
+from pathlib import Path
+from time import process_time
+
 import torch.nn as nn
 import torch.utils.model_zoo as model_zoo
+
 from ..sync_batchnorm.batchnorm import SynchronizedBatchNorm2d
+
 
 class Bottleneck(nn.Module):
     expansion = 4
@@ -139,7 +143,8 @@ class ResNet(nn.Module):
 
     def _load_pretrained_model(self):
        
-        mDir = '/software/model/resnet/'
+        homeDir = Path(__file__).parents[3]
+        mDir = os.path.join(homeDir,'models','resnet')
         pretrain_dict = model_zoo.load_url('https://download.pytorch.org/models/resnet101-5d3b4d8f.pth',model_dir=mDir)
 
         model_dict = {}
