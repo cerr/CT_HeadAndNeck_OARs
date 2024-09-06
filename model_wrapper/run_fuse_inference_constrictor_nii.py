@@ -17,19 +17,20 @@ from skimage.transform import resize
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
-def labelToBin(labelMap, numLabels):
+
+def labelToBin(labelMap, numStructs):
     """Convert label map to binary mask stack"""
     labelSiz = np.shape(labelMap)
-    outSiz = labelSiz + (numLabels,)
+    outSiz = labelSiz + (numStructs,)
     binMask = np.zeros(outSiz)
-    for label in range(numLabels):
+    for label in range(numStructs):
         binMask[:, :, :, label] = labelMap == (label + 1)
-
     return binMask
 
 
-def writeFile(mask, dirName, fileName, inputImg):
+def writeFile(mask, dirName, inputImg):
     """ Write mask to NIfTI file """
+    fileName = 'mask.nii.gz'
     if not os.path.exists(dirName):
         os.makedirs(dirName)
     outFile = os.path.join(dirName, fileName)
@@ -83,7 +84,7 @@ class Constrictor(object):
                              output_stride=16,
                              sync_bn=False,
                              freeze_bn=False)
-        print(process_time() - t0)
+        print("%.1f" % (process_time() - t0) + ' s')
 
         # Using CUDA
         print('Loading model weights...')
@@ -103,7 +104,7 @@ class Constrictor(object):
             checkpoint = torch.load(self.modelPath, map_location=device)
             self.model.load_state_dict(checkpoint['state_dict'])
 
-        print(process_time() - t1)
+        print("%.1f" % (process_time() - t1) + ' s')
         print('Loaded.')
 
     def segment(self):
@@ -170,17 +171,20 @@ def main(inputPath, outputPath):
     constrictorAx = Constrictor(inputPath, 'axial')
     probMapAx, fName = constrictorAx.segment()
     nClass = constrictorAx.nClass
-    print(process_time() - t0)
+    print("%.1f" % (process_time() - t0) + ' s')
+
 
     t1 = process_time()
     constrictorSag = Constrictor(inputPath, 'sagittal')
     probMapSag, __ = constrictorSag.segment()
-    print(process_time() - t1)
+    print("%.1f" % (process_time() - t1) + ' s')
+
 
     t2 = process_time()
     constrictorCor = Constrictor(inputPath, 'coronal')
     probMapCor, __ = constrictorCor.segment()
-    print(process_time() - t2)
+    print("%.1f" % (process_time() - t2) + ' s')
+
 
     # Fuse maps
     print('Generating consensus segmentations...')
@@ -188,17 +192,18 @@ def main(inputPath, outputPath):
     avgProb = (probMapAx + probMapSag + probMapCor) / 3
     labels = avgProb[1,:,:,:] > 0.4
     labels = labels.astype(int)
-    mask = labelToBin(labels, nClass)
-    print(process_time() - t3)
+    mask = labelToBin(labels, nClass-1)
+    print("%.1f" % (process_time() - t3) + ' s')
+
 
     # Write to NIfTI
     print('Writing output mask to disk...')
     t4 = process_time()
-    path, file = os.path.split(fName)
+    #path, file = os.path.split(fName)
     inputImg = sitk.ReadImage(fName)
-    writeFile(mask, outputPath, file, inputImg)
+    writeFile(mask, outputPath, inputImg)
 
-    print(process_time() - t4)
+    print("%.1f" % (process_time() - t4) + ' s')
 
     return mask
 

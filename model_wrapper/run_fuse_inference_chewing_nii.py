@@ -17,23 +17,23 @@ from skimage.transform import resize
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
-def labelToBin(labelMap, numLabels):
+def labelToBin(labelMap, numStructs):
     """Convert label map to binary mask stack"""
     labelSiz = np.shape(labelMap)
-    outSiz = labelSiz + (numLabels,)
+    outSiz = labelSiz + (numStructs,)
     binMask = np.zeros(outSiz)
-    for label in range(numLabels):
+    for label in range(numStructs):
         binMask[:, :, :, label] = labelMap == (label + 1)
-
     return binMask
 
 
-def writeFile(mask, dirName, fileName, inputImg):
+def writeFile(mask, dirName, inputImg):
     """ Write mask to NIfTI file """
+    fileName = 'mask.nii.gz'
     if not os.path.exists(dirName):
         os.makedirs(dirName)
     outFile = os.path.join(dirName, fileName)
-    mask = np.transpose(mask, (2, 0, 1, 3))
+    mask = np.transpose(mask, (2, 0, 1, 3))   
     maskImg = sitk.GetImageFromArray(mask)
     maskImg.CopyInformation(inputImg)
     sitk.WriteImage(maskImg, outFile)
@@ -48,14 +48,13 @@ class Chewing(object):
         self.cropSize = 321
         self.batchSize = 1
 
-        cDir = os.path.dirname(os.path.realpath(__file__))
+        cDir = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
 
         if view == 'axial':
             self.mean = (0.2306, 0.2306, 0.2306)
             self.std = (0.2093, 0.2093, 0.2093)
             self.dataPath =  os.path.join(self.inputDir,'axial')
             self.modelPath = os.path.join(cDir, 'models', 'MM_PM_Ax_model.pth.tar')
-            # ---
         elif view == 'sagittal':
             self.mean = (0.2412, 0.2412, 0.2412)
             self.std = (0.1943, 0.1943, 0.1943)
@@ -84,7 +83,7 @@ class Chewing(object):
                              output_stride=16,
                              sync_bn=False,
                              freeze_bn=False)
-        print(process_time() - t0)
+        print("%.1f" %(process_time() - t0) + ' s')
 
         # Using CUDA
         print('Loading model weights...')
@@ -104,7 +103,7 @@ class Chewing(object):
             checkpoint = torch.load(self.modelPath, map_location=device)
             self.model.load_state_dict(checkpoint['state_dict'])
 
-        print(process_time() - t1)
+        print("%.1f" %(process_time() - t1) + ' s')
         print('Loaded.')
 
     def segment(self):
@@ -171,34 +170,34 @@ def main(inputPath, outputPath):
     chewingAx = Chewing(inputPath, 'axial')
     probMapAx, fName = chewingAx.segment()
     nClass = chewingAx.nClass
-    print(process_time() - t0)
+    print("%.1f" % (process_time() - t0) + ' s')
 
     t1 = process_time()
     chewingSag = Chewing(inputPath, 'sagittal')
     probMapSag, __ = chewingSag.segment()
-    print(process_time() - t1)
+    print("%.1f" % (process_time() - t1) + ' s')
 
     t2 = process_time()
     chewingCor = Chewing(inputPath, 'coronal')
     probMapCor, __ = chewingCor.segment()
-    print(process_time() - t2)
+    print("%.1f" % (process_time() - t2) + ' s')
 
     # Fuse maps
     print('Generating consensus segmentations...')
     t3 = process_time()
     avgProb = (probMapAx + probMapSag + probMapCor) / 3
     labels = np.argmax(avgProb, axis=0)
-    mask = labelToBin(labels, nClass)
-    print(process_time() - t3)
+    mask = labelToBin(labels, nClass-1)
+    print("%.1f" % (process_time() - t3) + ' s')
 
     # Write to NIfTI
     print('Writing output mask to disk...')
     t4 = process_time()
-    path, file = os.path.split(fName)
+    #path, file = os.path.split(fName)
     inputImg = sitk.ReadImage(fName)
-    writeFile(mask, outputPath, file, inputImg)
+    writeFile(mask, outputPath, inputImg)
 
-    print(process_time() - t4)
+    print("%.1f" % (process_time() - t4) + ' s')
 
     return mask
 
