@@ -4,6 +4,7 @@ of head and neck cancer patients. It operates on axial CT scans acquired for thi
     
 Two different architectures are used: a  set of of DeepLabV3+ model ensembles [1] for sequential localization and segmentation of:    
           
+### OAR group 1          
 * Left masseter    
 * Right masseter    
 * Left medial pterygoid    
@@ -11,8 +12,9 @@ Two different architectures are used: a  set of of DeepLabV3+ model ensembles [1
 * Larynx    
 * Pharyngeal constrictor muscle     
   
-and a second self-attention U-net network [2] to segment:    
+and a self-attention U-net network [2] to segment:    
   
+### OAR group 2
 * Left parotid    
 * Right parotid    
 * Left submandibular gland  
@@ -27,14 +29,27 @@ and a second self-attention U-net network [2] to segment:
 Dependencies specified in `requirements.txt` may be installed as follows:  
   
 ````
-conda create -y --name CT_HeadAndNeckOARs python=3.7.3
+conda create -y --name CT_HeadAndNeckOARs python=3.8.19
 conda activate CT_HeadAndNeckOARs
 pip install -r requirements.txt  
 ````
   
-## Applying the model  
+## Running pre-trained models  
 ```  
-python run_inference_nii.py <input_nii_directory> <output_nii_directory>  
+### OAR group-1:
+
+** Option-1: Apply DeeplabV3+ ensembles sequentially to DICOM data **
+python run_inference_deeplab.py <input_dicom_directory> <session_directory> <output_dicom_directory>  
+
+** Option-2: Apply individual models to processed NIfTI data **
+python run_fuse_inference_chewing_nii <input_nii_directory> <output_nii_directory>
+python run_fuse_inference_larynx_nii.py <input_nii_directory> <output_nii_directory>
+python run_fuse_inference_constrictor_nii.py  <input_nii_directory> <output_nii_directory>
+
+
+### OAR group-2 
+python run_inference_selfattn_nii.py <input_nii_directory> <output_nii_directory>  #OAR group-2
+
 ```
   
 ## Citing this work
