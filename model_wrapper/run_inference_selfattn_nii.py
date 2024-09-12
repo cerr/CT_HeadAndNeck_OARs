@@ -79,7 +79,7 @@ def main(argv):
     # Load pre-trained weights
     script_dir = os.path.dirname(os.path.abspath(__file__))
     wrapper_dir = os.path.dirname(script_dir)
-    model_dir = os.path.join(wrapper_dir, "model")
+    model_dir = os.path.join(wrapper_dir, "models")
     model_weights_path = os.path.join(model_dir, 'model_save')
     model = create_model(opt)
     model.load_CT_seg_A(model_weights_path)
