@@ -60,7 +60,8 @@ def postProcessChew(mask3M):
 
     # Smooth
     if strMask3M.shape[2] > 1:
-        smoothedLabel3M = mask.blurring(strMask3M, filtSize, filtType='box')
+        filtRadius = int((filtSize-1)/2)
+        smoothedLabel3M = mask.blurring(strMask3M, filtRadius, filtType='box')
         strMask3M = smoothedLabel3M > 0.4
 
     procMask3M[:, :, slicesV] = strMask3M
@@ -109,7 +110,8 @@ def postProcessLar(mask3M):
 
     # Smooth
     if strMask3M.shape[2] > 1:
-        smoothedLabel3M = mask.blurring(strMask3M, filtSize, filtType='box')
+        filtRadius = int((filtSize-1)/2)
+        smoothedLabel3M = mask.blurring(strMask3M, filtRadius, filtType='box')
         strMask3M = smoothedLabel3M > 0.5
 
     procMask3M[:, :, slicesV] = strMask3M
@@ -158,7 +160,8 @@ def postProcessCM(mask3M):
 
     # Smooth
     if fillMask3m.shape[2] > 1:
-        smoothedLabel3M = mask.blurring(fillMask3m, filtSize, filtType='box')
+        filtRadius = int((filtSize-1)/2)
+        smoothedLabel3M = mask.blurring(fillMask3m, filtRadius, filtType='box')
         fillMask3m = smoothedLabel3M > 0.5
 
     procMask3M[:, :, slicesV] = fillMask3m
