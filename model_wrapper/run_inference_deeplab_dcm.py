@@ -4,6 +4,7 @@ import sys
 
 import SimpleITK as sitk
 import numpy as np
+from pathlib import Path
 from skimage.morphology import remove_small_objects
 
 from cerr import plan_container as pc
@@ -84,6 +85,7 @@ def postProcessLar(mask3M):
 
     # Min size for connected components
     minSizeIsland = np.floor(10 / scale ** 2)
+    minSizeSlcCC = np.floor(20 / scale ** 2)
     minSizeCC = np.floor(1000 / scale ** 2)
 
     procMask3M = mask3M
@@ -102,7 +104,7 @@ def postProcessLar(mask3M):
                                                    connectivity=8)
         temp = fillMask3m[:, :, s]
         strMaskM = mask.largestConnComps(temp, 1,
-                                         minSize=minSizeIsland, dim=2)
+                                         minSize=minSizeSlcCC, dim=2)
         fillMask3m[:, :, s] = strMaskM
 
     strMask3M = mask.largestConnComps(fillMask3m, 1,
@@ -435,7 +437,7 @@ def exportSegs(planC, scanIndex, scanBounds, modelName, segPath, outputDicomPath
     exportOpts = {'seriesDescription': seriesDescription}
     rtstruct_iod.create(procStrV, structFilePath, planC, exportOpts)
 
-    return planC
+    return planC, structFilePath
 
 
 def main(inputPath, sessionpath, outputPath):
@@ -445,7 +447,7 @@ def main(inputPath, sessionpath, outputPath):
     os.makedirs(outputPath, exist_ok=True)
 
     # Read DICOM image
-    ptID = os.path.basename(inputPath)
+    ptID = Path(Path(inputPath).stem).stem
     planC = pc.loadDcmDir(inputPath)
 
     # Segment chewing structures
@@ -453,7 +455,7 @@ def main(inputPath, sessionpath, outputPath):
     scanIndex, scanBounds, planC = preProcChew(planC, sessionpath)
     tempNiiPath = os.path.join(sessionpath, 'chew_out_nii')
     run_fuse_inference_chewing_nii.main(sessionpath, tempNiiPath)
-    planC = exportSegs(planC, scanIndex, scanBounds,
+    planC, chewMaskPath = exportSegs(planC, scanIndex, scanBounds,
                        modelName, tempNiiPath, outputPath, ptID)
 
     # Segment larynx
@@ -461,7 +463,7 @@ def main(inputPath, sessionpath, outputPath):
     scanIndex, scanBounds, planC = preProcLar(planC, scanIndex, sessionpath)
     tempNiiPath = os.path.join(sessionpath, 'larynx_out_nii')
     run_fuse_inference_larynx_nii.main(sessionpath, tempNiiPath)
-    planC = exportSegs(planC, scanIndex, scanBounds, modelName,
+    planC, larynxMaskPath = exportSegs(planC, scanIndex, scanBounds, modelName,
                        tempNiiPath, outputPath, ptID)
 
     # Segment pharyngeal constrictor
@@ -469,12 +471,12 @@ def main(inputPath, sessionpath, outputPath):
     scanIndex, scanBounds, planC = preProcCM(planC, scanIndex, sessionpath)
     tempNiiPath = os.path.join(sessionpath, 'cm_out_nii')
     run_fuse_inference_constrictor_nii.main(sessionpath, tempNiiPath)
-    planC = exportSegs(planC, scanIndex, scanBounds, modelName,
+    planC, constrictorMaskPath = exportSegs(planC, scanIndex, scanBounds, modelName,
                        tempNiiPath, outputPath, ptID)
 
     # Clear session dir
     shutil.rmtree(sessionpath)
-    return planC
+    return planC, chewMaskPath, larynxMaskPath, constrictorMaskPath
 
 
 if __name__ == '__main__':
