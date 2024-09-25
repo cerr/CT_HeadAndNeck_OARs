@@ -970,7 +970,7 @@ class cycle_gan_unet_ct_seg_baseline(BaseModel):
         #self.loss_feature=feature_loss.data[0]
 
     def load_CT_seg_A(self, weight):
-        self.load_network(self.netSeg_A,'Seg_A',weight)
+        self.load_network(self.netSeg_A,'Seg_A_v2',weight)
 
 
     def optimize_parameters(self):
