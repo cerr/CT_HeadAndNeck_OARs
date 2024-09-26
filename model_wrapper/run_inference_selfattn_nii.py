@@ -50,8 +50,22 @@ def write_file(mask, dir_name, file_name, input_img):
         os.makedirs(dir_name)
     out_file = os.path.join(dir_name, file_name + '.nii.gz')
     mask = np.flip(mask,0)
-    mask_img = sitk.GetImageFromArray(mask)
-    mask_img.CopyInformation(input_img)
+    mask_img = sitk.GetImageFromArray(mask, isVector=False)
+
+    # Copy information from input img
+    origin3d = list(input_img.GetOrigin())
+    origin4d = origin3d + [0.0]  # Append 0.0 for the 4th dimension
+    mask_img.SetOrigin(origin4d)
+    spacing3d = list(input_img.GetSpacing())
+    spacing4d = spacing3d + [1.0]
+    mask_img.SetSpacing(spacing4d)
+    direction3d = list(input_img.GetDirection())
+    direction4d = [ direction3d[0], direction3d[1], direction3d[2], 0.0,
+                    direction3d[3], direction3d[4], direction3d[5], 0.0,
+                    direction3d[6], direction3d[7], direction3d[8], 0.0,
+                    0.0,            0.0,            0.0,            1.0]
+    mask_img.SetDirection(direction4d)
+
     sitk.WriteImage(mask_img, out_file)
 
 def normalize_data_HN_window(data):

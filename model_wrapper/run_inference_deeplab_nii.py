@@ -440,10 +440,24 @@ def exportSegs(planC, scanIndex, scanBounds, modelName, segPath, outputPath, ptI
 
 def writeFile(mask, fileName, inputImg):
     """ Write mask to NIfTI file """
-    mask = np.flip(mask,0)
-    maskImg = sitk.GetImageFromArray(mask)
-    maskImg.CopyInformation(inpuImg)
-    sitk.WriteImage(maskImg, outFile)
+    maskShift = np.moveaxis(mask,[3,2,1,0],[0,1,2,3])
+    maskImg = sitk.GetImageFromArray(maskShift, isVector=False)
+    
+    # Copy information from input img
+    origin3d = list(inputImg.GetOrigin())
+    origin4d = origin3d + [0.0]  # Append 0.0 for the 4th dimension
+    maskImg.SetOrigin(origin4d)
+    spacing3d = list(inputImg.GetSpacing())
+    spacing4d = spacing3d + [1.0]
+    maskImg.SetSpacing(spacing4d)
+    direction3d = inputImg.GetDirection()
+    direction4d = [ direction3d[0], direction3d[1], direction3d[2], 0.0,
+                    direction3d[3], direction3d[4], direction3d[5], 0.0,
+                    direction3d[6], direction3d[7], direction3d[8], 0.0,
+                    0.0,            0.0,            0.0,            1.0]
+    maskImg.SetDirection(direction4d)
+
+    sitk.WriteImage(maskImg, fileName)
 
 
 def main(inputPath, sessionpath, outputPath):
@@ -477,15 +491,16 @@ def main(inputPath, sessionpath, outputPath):
     scanIndex, scanBounds, planC = preProcCM(planC, scanIndex, sessionpath)
     tempNiiPath = os.path.join(sessionpath, 'cm_out_nii')
     run_fuse_inference_constrictor_nii.main(sessionpath, tempNiiPath)
-    planC, constrictorMask = exportSegs(planC, scanIndex, scanBounds, modelNames[2],
+    planC, cmMask = exportSegs(planC, scanIndex, scanBounds, modelNames[2],
                        tempNiiPath, outputPath, ptID)
 
     # Export to NIfTI
     outputFiles = []
-    for modelName in modelNames:
-        structFileName = ptID + '_' + modelName + '_AI_seg.nii.gz'
+    maskImgList = [chewMask, larynxMask, cmMask]
+    for modelNum in range(len(modelNames)):
+        structFileName = ptID + '_' + modelNames[modelNum] + '_AI_seg.nii.gz'
         structFilePath = os.path.join(outputPath, structFileName)
-        writeFile(chewMask, structFilePath, origImg)
+        writeFile(maskImgList[modelNum], structFilePath, origImg)
         outputFiles.append(structFilePath)
 
     # Clear session dir
