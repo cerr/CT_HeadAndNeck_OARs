@@ -410,12 +410,13 @@ def exportSegs(planC, scanIndex, scanBounds, modelName, segPath, outputPath, ptI
         outputMask4M = temp
 
     # Reverse transformations
+    numStructs = len(strToLabelMap)
     fullMask3M = np.full(origSize, fill_value=0)
+    procmask4M = np.zeros(origSize+(numStructs,))
     replaceStrNum = None
     procStrV = []
 
     # Output to NIfTI
-    numStructs = len(strToLabelMap)
     for labelIdx in range(numStructs):
         # Undo pre-processing transformations
         strName = outputStrNames[labelIdx]
@@ -428,15 +429,21 @@ def exportSegs(planC, scanIndex, scanBounds, modelName, segPath, outputPath, ptI
         procmask3M = postProc(modelName, fullMask3M)
         planC = pc.importStructureMask(procmask3M, scanIndex,
                                        strName, planC, replaceStrNum)
+        procmask4M[:,:,:,labelIdx] = procmask3M
+
         procStr = len(planC.structure) - 1
         procStrV.append(procStr)
 
-    # Export to NIfTI
-    structFileName = ptID + '_' + modelName + '_AI_seg.nii.gz'
-    structFilePath = os.path.join(outputPath, structFileName)
-    pc.saveNiiStructure(structFilePath, procStrV, planC, labelDict=strToLabelMap, dim=4)
+    #pc.saveNiiStructure(structFilePath, procStrV, planC, labelDict=strToLabelMap, dim=4)
 
-    return planC, structFilePath
+    return planC, procmask4M
+
+def writeFile(mask, fileName, inputImg):
+    """ Write mask to NIfTI file """
+    mask = np.flip(mask,0)
+    maskImg = sitk.GetImageFromArray(mask)
+    maskImg.CopyInformation(inpuImg)
+    sitk.WriteImage(maskImg, outFile)
 
 
 def main(inputPath, sessionpath, outputPath):
@@ -451,33 +458,39 @@ def main(inputPath, sessionpath, outputPath):
     planC = pc.loadNiiScan(inputPath, imageType="CT SCAN")
     origImg = sitk.ReadImage(inputPath)
 
+    modelNames = ['chew','larynx','cm']
     # Segment chewing structures
-    modelName = 'chew'
     scanIndex, scanBounds, planC = preProcChew(planC, sessionpath)
     tempNiiPath = os.path.join(sessionpath, 'chew_out_nii')
     run_fuse_inference_chewing_nii.main(sessionpath, tempNiiPath)
-    planC, chewMaskPath = exportSegs(planC, scanIndex, scanBounds,
-                       modelName, tempNiiPath, outputPath, ptID)
+    planC, chewMask = exportSegs(planC, scanIndex, scanBounds,
+                       modelNames[0], tempNiiPath, outputPath, ptID)
 
     # Segment larynx
-    modelName = 'larynx'
     scanIndex, scanBounds, planC = preProcLar(planC, scanIndex, sessionpath)
     tempNiiPath = os.path.join(sessionpath, 'larynx_out_nii')
     run_fuse_inference_larynx_nii.main(sessionpath, tempNiiPath)
-    planC, larynxMaskPath = exportSegs(planC, scanIndex, scanBounds, modelName,
+    planC, larynxMask = exportSegs(planC, scanIndex, scanBounds, modelNames[1],
                        tempNiiPath, outputPath, ptID)
 
     # Segment pharyngeal constrictor
-    modelName = 'cm'
     scanIndex, scanBounds, planC = preProcCM(planC, scanIndex, sessionpath)
     tempNiiPath = os.path.join(sessionpath, 'cm_out_nii')
     run_fuse_inference_constrictor_nii.main(sessionpath, tempNiiPath)
-    planC, constrictorMaskPath = exportSegs(planC, scanIndex, scanBounds, modelName,
+    planC, constrictorMask = exportSegs(planC, scanIndex, scanBounds, modelNames[2],
                        tempNiiPath, outputPath, ptID)
+
+    # Export to NIfTI
+    outputFiles = []
+    for modelName in modelNames:
+        structFileName = ptID + '_' + modelName + '_AI_seg.nii.gz'
+        structFilePath = os.path.join(outputPath, structFileName)
+        writeFile(chewMask, structFilePath, origImg)
+        outputFiles.append(structFilePath)
 
     # Clear session dir
     shutil.rmtree(sessionpath)
-    return planC, chewMaskPath, larynxMaskPath, constrictorMaskPath
+    return planC, outputFiles
 
 
 if __name__ == '__main__':
