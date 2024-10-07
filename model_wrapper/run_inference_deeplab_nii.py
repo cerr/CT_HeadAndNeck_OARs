@@ -436,11 +436,11 @@ def exportSegs(planC, scanIndex, scanBounds, modelName, segPath, outputPath, ptI
 
     #pc.saveNiiStructure(structFilePath, procStrV, planC, labelDict=strToLabelMap, dim=4)
 
-    return planC, procmask4M
+    return planC, procStrV, procmask4M
 
 def writeFile(mask, fileName, inputImg):
     """ Write mask to NIfTI file """
-    maskShift = np.moveaxis(mask,[3,2,1,0],[0,1,2,3])
+    maskShift = np.moveaxis(mask,[3, 2, 1, 0],[0, 1, 2, 3])
     maskImg = sitk.GetImageFromArray(maskShift, isVector=False)
     
     # Copy information from input img
@@ -472,27 +472,29 @@ def main(inputPath, sessionpath, outputPath):
     planC = pc.loadNiiScan(inputPath, imageType="CT SCAN")
     origImg = sitk.ReadImage(inputPath)
 
-    modelNames = ['chew','larynx','cm']
+    modelNames = ['chew', 'larynx', 'cm']
     # Segment chewing structures
     scanIndex, scanBounds, planC = preProcChew(planC, sessionpath)
     tempNiiPath = os.path.join(sessionpath, 'chew_out_nii')
     run_fuse_inference_chewing_nii.main(sessionpath, tempNiiPath)
-    planC, chewMask = exportSegs(planC, scanIndex, scanBounds,
+    planC, chewStrNums, chewMask = exportSegs(planC, scanIndex, scanBounds,
                        modelNames[0], tempNiiPath, outputPath, ptID)
 
     # Segment larynx
     scanIndex, scanBounds, planC = preProcLar(planC, scanIndex, sessionpath)
     tempNiiPath = os.path.join(sessionpath, 'larynx_out_nii')
     run_fuse_inference_larynx_nii.main(sessionpath, tempNiiPath)
-    planC, larynxMask = exportSegs(planC, scanIndex, scanBounds, modelNames[1],
+    planC, larStrNum, larynxMask = exportSegs(planC, scanIndex, scanBounds, modelNames[1],
                        tempNiiPath, outputPath, ptID)
 
     # Segment pharyngeal constrictor
     scanIndex, scanBounds, planC = preProcCM(planC, scanIndex, sessionpath)
     tempNiiPath = os.path.join(sessionpath, 'cm_out_nii')
     run_fuse_inference_constrictor_nii.main(sessionpath, tempNiiPath)
-    planC, cmMask = exportSegs(planC, scanIndex, scanBounds, modelNames[2],
+    planC, cmStrNum, cmMask = exportSegs(planC, scanIndex, scanBounds, modelNames[2],
                        tempNiiPath, outputPath, ptID)
+
+    outputStrNumV = chewStrNums + larStrNum + cmStrNum
 
     # Export to NIfTI
     outputFiles = []
@@ -505,7 +507,7 @@ def main(inputPath, sessionpath, outputPath):
 
     # Clear session dir
     shutil.rmtree(sessionpath)
-    return planC, outputFiles
+    return planC, outputStrNumV, outputFiles
 
 
 if __name__ == '__main__':
