@@ -1,15 +1,17 @@
 import os
 import shutil
 import sys
+from pathlib import Path
 
 import SimpleITK as sitk
 import numpy as np
-from pathlib import Path
 from skimage.morphology import remove_small_objects
 
 from cerr import plan_container as pc
 from cerr.contour import rasterseg as rs
+from cerr.dataclasses import scan as cerrScn
 from cerr.dataclasses import structure as cerrStr
+from cerr.dcm_export import rtstruct_iod
 from cerr.utils import mask
 from cerr.utils.ai_pipeline import getScanNumFromIdentifier
 from cerr.utils.image_proc import transformScan
@@ -19,9 +21,10 @@ import run_fuse_inference_chewing_nii
 import run_fuse_inference_constrictor_nii
 import run_fuse_inference_larynx_nii
 
+model_arch = 'deeplab'
 
 def postProcessChew(mask3M):
-    "Post-processing of AI segmentations of chewing structures"
+    """ Post-processing of AI segmentations of chewing structures """
 
     maskSiz = mask3M.shape[0]
     scale = 512 / maskSiz
@@ -70,7 +73,7 @@ def postProcessChew(mask3M):
 
 
 def postProcessLar(mask3M):
-    "Post-processing of AI segmentations of the larynx"
+    """ Post-processing of AI segmentations of the larynx """
 
     maskSiz = mask3M.shape[0]
     scale = 512 / maskSiz
@@ -121,7 +124,7 @@ def postProcessLar(mask3M):
 
 
 def postProcessCM(mask3M):
-    "Post-processing of AI segmentations of the constrictor"
+    """ Post-processing of AI segmentations of the constrictor """
 
     maskSiz = mask3M.shape[0]
     scale = 512 / maskSiz
@@ -171,9 +174,7 @@ def postProcessCM(mask3M):
 
 
 def postProc(selectedMethod, *params):
-    """
-    Apply post-processing for specified model
-    """
+    """ Apply post-processing for specified model """
     methodDict = {"chew": postProcessChew,
                   "larynx": postProcessLar,
                   "cm": postProcessCM}
@@ -183,9 +184,7 @@ def postProc(selectedMethod, *params):
 
 
 def preProcChew(planC, niiDir):
-    """
-    Localize chewing structures on HN CT image and save cropped NIfTI image to niiDir
-    """
+    """ Localize chewing structures on HN CT image and save cropped NIfTI image to niiDir """
     identifier = {"imageType": "CT SCAN"}
     scanIndices = getScanNumFromIdentifier(identifier, planC, False)
 
@@ -271,9 +270,7 @@ def preProcChew(planC, niiDir):
 
 
 def preProcLar(planC, scanIndex, niiDir):
-    """
-    Localize larynx on HN CT image and save cropped NIfTI image to niiDir
-    """
+    """ Localize larynx on HN CT image and save cropped NIfTI image to niiDir """
 
     chewingStrList = ["Left masseter", "Right masseter",
                       "Left medial pterygoid", "Right medial pterygoid"]
@@ -334,9 +331,7 @@ def preProcLar(planC, scanIndex, niiDir):
 
 
 def preProcCM(planC, scanIndex, niiDir):
-    """
-    Localize constrictor on HN CT image and save cropped NIfTI image to niiDir
-    """
+    """ Localize constrictor on HN CT image and save cropped NIfTI image to niiDir """
 
     # Crop scan around constrictor
     tol_r = 30
@@ -386,7 +381,7 @@ def preProcCM(planC, scanIndex, niiDir):
 
 
 def exportSegs(planC, scanIndex, scanBounds, modelName, segPath, outputPath, ptID):
-    """Import NIfTI segmentation masks, apply post-processing, and export to NIfTI """
+    """ Import NIfTI segmentation masks, apply post-processing, and export to NIfTI """
     if modelName == 'chew':
         strToLabelMap = {1: "Left masseter", 2: "Right masseter",
                          3: "Left medial pterygoid",
@@ -459,15 +454,30 @@ def writeFile(mask, fileName, inputImg):
 
     sitk.WriteImage(maskImg, fileName)
 
+    return 0
 
-def main(inputPath, sessionpath, outputPath):
+def maskToDICOM(ptID, modelName, outputDir, structNums, scanNum, planC):
+    """ Export AI auto-segmentatiosn to DIOCM RTSTRUCTs """
+
+    newStructNums = len(planC.structure)
+    structFileName = f"{ptID}_{modelName}_AI_seg.dcm"
+    structFilePath = os.path.join(outputDir, structFileName)
+    seriesDescription = "AI Generated"
+    exportOpts = {'seriesDescription': seriesDescription}
+    indOrigV = np.array([cerrScn.getScanNumFromUID(planC.structure[structNum].assocScanUID, \
+                                                   planC) for structNum in structNums], dtype=int)
+    structsToExportV = np.array(structNums)[indOrigV == scanNum]
+    rtstruct_iod.create(structsToExportV, structFilePath, planC, exportOpts)
+
+    return 0
+
+def main(inputPath, sessionpath, outputPath, DCMexportFlag=False):
 
     # Create output and session dirs
     os.makedirs(sessionpath, exist_ok=True)
     os.makedirs(outputPath, exist_ok=True)
 
     # Read nii image
-    #ptID = os.path.basename(inputPath)
     ptID = Path(Path(inputPath).stem).stem
     planC = pc.loadNiiScan(inputPath, imageType="CT SCAN")
     origImg = sitk.ReadImage(inputPath)
@@ -505,10 +515,17 @@ def main(inputPath, sessionpath, outputPath):
         writeFile(maskImgList[modelNum], structFilePath, origImg)
         outputFiles.append(structFilePath)
 
+    if DCMexportFlag:
+        # Export to DICOM
+        maskToDICOM(ptID, model_arch, outputPath, outputStrNumV, scanIndex, planC)
+
     # Clear session dir
     shutil.rmtree(sessionpath)
     return planC, outputStrNumV, outputFiles
 
 
 if __name__ == '__main__':
-    main(sys.argv[1], sys.argv[2], sys.argv[3])
+    DCMexportFlag = False
+    if len(sys.argv) > 4:
+        DCMexportFlag = sys.argv[4]
+    main(sys.argv[1], sys.argv[2], sys.argv[3], DCMexportFlag)

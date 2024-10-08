@@ -2,24 +2,23 @@ import fnmatch
 import glob
 import os
 import sys
+from pathlib import Path
 
 import SimpleITK as sitk
 import numpy as np
 import torch.utils.data
-from pathlib import Path
 
 from cerr import plan_container as pc
+from cerr.dataclasses import scan as cerrScn
+from cerr.dataclasses import structure
+from cerr.dcm_export import rtstruct_iod
 from cerr.radiomics.preprocess import getResampledGrid, imgResample3D
 from cerr.utils.ai_pipeline import getScanNumFromIdentifier
 from cerr.utils.image_proc import resizeScanAndMask
 from cerr.utils.mask import computeBoundingBox, getPatientOutline
-from cerr.dataclasses import structure
-from cerr.contour import rasterseg as rs
 
 from models.models import create_model
 from options.train_options import TrainOptions
-
-opt = TrainOptions().parse()
 
 # Input image dimensions
 input_size = 256
@@ -33,6 +32,7 @@ label_dict = {1:"Left Parotid", 2:"Right Parotid",
 output_str_labels = list(label_dict.keys())
 output_str_names = list(label_dict.values())
 
+model_arch = 'self_attn'
 
 def find(pattern, path):
     """look for NIfTI files in the given directory"""
@@ -251,11 +251,29 @@ def write_file(mask, dir_name, file_name, input_img):
 
     sitk.WriteImage(mask_img, out_file)
 
-def main(argv):
+def maskToDICOM(ptID, modelName, outputDir, structNums, scanNum, planC):
+    """ Export AI auto-segmentatiosn to DIOCM RTSTRUCTs """
+
+    newStructNums = len(planC.structure)
+    structFileName = f"{ptID}_{modelName}_AI_seg.dcm"
+    structFilePath = os.path.join(outputDir, structFileName)
+    seriesDescription = "AI Generated"
+    exportOpts = {'seriesDescription': seriesDescription}
+    indOrigV = np.array([cerrScn.getScanNumFromUID(planC.structure[structNum].assocScanUID, \
+                                                   planC) for structNum in structNums], dtype=int)
+    structsToExportV = np.array(structNums)[indOrigV == scanNum]
+    rtstruct_iod.create(structsToExportV, structFilePath, planC, exportOpts)
+
+    return 0
+
+def main(train_opt, argv):
 
     input_nii_path = argv[1]
     session_path = argv[2]
     output_nii_path = argv[3]
+    DCMexportFlag = False
+    if len(argv) > 4:
+        DCMexportFlag = argv[4]
 
     # Create output and session dirs
     model_in_path = os.path.join(session_path, 'input_nii')
@@ -285,30 +303,30 @@ def main(argv):
     wrapper_dir = os.path.dirname(script_dir)
     model_dir = os.path.join(wrapper_dir, "models")
     model_weights_path = os.path.join(model_dir, 'model_save')
-    model = create_model(opt)
+    model = create_model(train_opt)
     model.load_CT_seg_A(model_weights_path)
 
     # Load processed image
-    ("*******Filename*******")
+    ("******* Filename *******")
     print(proc_scan_filename)
     ct_arr, sitk_img = load_file(proc_scan_filepath)
     ct_arr = np.array(ct_arr)
     img_arr = add_CT_offset(ct_arr)
     print(ct_arr.shape)
 
-    print("******Shape*******")
+    print("****** Shape *******")
     height, width, length = np.shape(img_arr)
     print("Input image size")
     print(np.shape(img_arr))
 
-    print('******Normalize******')
+    print('****** Normalize ******')
     img_norm_arr = normalize_data_HN_window(img_arr)
     img_flip_norm_arr = img_norm_arr.transpose(2, 0, 1)
     img_flip_norm_arr = img_flip_norm_arr.reshape(img_flip_norm_arr.shape[0],1,
                                                       img_flip_norm_arr.shape[1],
                                                       img_flip_norm_arr.shape[2])
 
-    print("******Final scan shape******")
+    print("****** Final scan shape ******")
     print(np.shape(img_flip_norm_arr))
     # originally added for comparison, make it zero, should work
     label_arr = np.zeros(shape=np.shape(img_flip_norm_arr))
@@ -320,7 +338,7 @@ def main(argv):
                              dtype=np.uint8)
 
     print('Data set size: ', img_flip_norm_arr.shape)
-    print('******Data loading complete******')
+    print('****** Data loading complete ******')
 
     print("****** Apply model ******")
     train_loader_c1 = torch.utils.data.DataLoader(images_ct_val,
@@ -351,9 +369,15 @@ def main(argv):
         struct_file_name = f"{pt_id}_{output_str_names[mask_num]}_AI_seg.nii.gz"
         write_file(proc_mask_list[mask_num], output_nii_path, struct_file_name, orig_img)
 
+    if DCMexportFlag:
+        # Export to DICOM
+        maskToDICOM(pt_id, model_arch, output_nii_path, proc_str_num, orig_scan_num, planC)
+
+
     return output_files, proc_str_num, planC
 
 if __name__ == "__main__":
-    main(sys.argv)
+    opt = TrainOptions().parse()
+    main(opt, sys.argv)
 
 
