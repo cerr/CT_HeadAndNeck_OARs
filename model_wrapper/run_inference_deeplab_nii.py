@@ -21,7 +21,7 @@ import run_fuse_inference_chewing_nii
 import run_fuse_inference_constrictor_nii
 import run_fuse_inference_larynx_nii
 
-model_arch = 'deeplab'
+modelArch = 'deeplab'
 
 def postProcessChew(mask3M):
     """ Post-processing of AI segmentations of chewing structures """
@@ -476,11 +476,15 @@ def main(inputPath, sessionpath, outputPath, DCMexportFlag=False):
     # Create output and session dirs
     os.makedirs(sessionpath, exist_ok=True)
     os.makedirs(outputPath, exist_ok=True)
+    niiOutPath = os.path.join(outputPath, 'NIfTI')
+    os.makedirs(niiOutPath, exist_ok=True)
 
     # Read nii image
-    ptID = Path(Path(inputPath).stem).stem
-    planC = pc.loadNiiScan(inputPath, imageType="CT SCAN")
-    origImg = sitk.ReadImage(inputPath)
+    fileName = os.listdir(inputPath)[0]
+    filePath = os.path.join(inputPath, fileName)
+    ptID = Path(Path(fileName).stem).stem
+    planC = pc.loadNiiScan(filePath, imageType="CT SCAN")
+    origImg = sitk.ReadImage(filePath)
 
     modelNames = ['chew', 'larynx', 'cm']
     # Segment chewing structures
@@ -511,13 +515,15 @@ def main(inputPath, sessionpath, outputPath, DCMexportFlag=False):
     maskImgList = [chewMask, larynxMask, cmMask]
     for modelNum in range(len(modelNames)):
         structFileName = ptID + '_' + modelNames[modelNum] + '_AI_seg.nii.gz'
-        structFilePath = os.path.join(outputPath, structFileName)
+        structFilePath = os.path.join(niiOutPath, structFileName)
         writeFile(maskImgList[modelNum], structFilePath, origImg)
         outputFiles.append(structFilePath)
 
     if DCMexportFlag:
         # Export to DICOM
-        maskToDICOM(ptID, model_arch, outputPath, outputStrNumV, scanIndex, planC)
+        dcmOutPath = os.path.join(outputPath, 'DICOM')
+        os.makedirs(dcmOutPath, exist_ok=True)
+        maskToDICOM(ptID, modelArch, dcmOutPath, outputStrNumV, scanIndex, planC)
 
     # Clear session dir
     shutil.rmtree(sessionpath)

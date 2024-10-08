@@ -270,7 +270,10 @@ def main(train_opt, argv):
 
     input_nii_path = argv[1]
     session_path = argv[2]
-    output_nii_path = argv[3]
+    output_path = argv[3]
+    nii_output_path = os.path.join(output_path, 'NIfTI')
+    os.makedirs(output_path, exist_ok=True)
+
     DCMexportFlag = False
     if len(argv) > 4:
         DCMexportFlag = argv[4]
@@ -279,7 +282,7 @@ def main(train_opt, argv):
     model_in_path = os.path.join(session_path, 'input_nii')
     model_out_path = os.path.join(session_path, 'output_nii')
     os.makedirs(session_path, exist_ok=True)
-    os.makedirs(output_nii_path, exist_ok=True)
+    os.makedirs(nii_output_path, exist_ok=True)
     os.makedirs(model_in_path, exist_ok=True)
     os.makedirs(model_out_path, exist_ok=True)
 
@@ -367,11 +370,13 @@ def main(train_opt, argv):
     output_files = []
     for mask_num in range(len(proc_mask_list)):
         struct_file_name = f"{pt_id}_{output_str_names[mask_num]}_AI_seg.nii.gz"
-        write_file(proc_mask_list[mask_num], output_nii_path, struct_file_name, orig_img)
+        write_file(proc_mask_list[mask_num], nii_output_path, struct_file_name, orig_img)
 
     if DCMexportFlag:
         # Export to DICOM
-        maskToDICOM(pt_id, model_arch, output_nii_path, proc_str_num, orig_scan_num, planC)
+        dcm_output_path = os.path.join(output_path, 'DICOM')
+        os.makedirs(dcm_output_path, exist_ok=True)
+        maskToDICOM(pt_id, model_arch, dcm_output_path, proc_str_num, orig_scan_num, planC)
 
 
     return output_files, proc_str_num, planC
