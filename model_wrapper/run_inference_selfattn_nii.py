@@ -59,74 +59,74 @@ def process_image(planC):
     modality = 'CT'
     identifier = {'imageType': 'CT SCAN'}
 
-    gridType = 'center'
-    resampMethod = 'sitkBSpline'
-    outputResV = [0.1, 0.1, 0]  # Output res: 1mm x 1mm in-plane
+    grid_type = 'center'
+    resamp_method = 'sitkBSpline'
+    outpu_res = [0.1, 0.1, 0]  # Output res: 1mm x 1mm in-plane
 
-    resizeMethod = 'pad2d'
-    outSizeV = [256, 256]
-    inputMask3M = None
+    resize_method = 'pad2d'
+    out_size = [256, 256]
+    input_mask_arr = None
 
-    outlineStructName = 'outline'
-    intensityThreshold = -400  # Air intensity for outline detection
+    outline_struct_name = 'outline'
+    intensity_threshold = -400  # Air intensity for outline detection
 
     # Get scan array
-    scanNum = getScanNumFromIdentifier(identifier, planC)[0]
-    xValsV, yValsV, zValsV = planC.scan[scanNum].getScanXYZVals()
-    scan3M = planC.scan[scanNum].getScanArray()
+    scan_num = getScanNumFromIdentifier(identifier, planC)[0]
+    x_vals, y_vals, z_vals = planC.scan[scan_num].getScanXYZVals()
+    scan_arr = planC.scan[scan_num].getScanArray()
 
     # 1. Resample
-    [xResampleV, yResampleV, zResampleV] = getResampledGrid(outputResV,
-                                                            xValsV, yValsV, zValsV,
-                                                            gridType)
-    resampScan3M = imgResample3D(scan3M,
-                                     xValsV, yValsV, zValsV,
-                                     xResampleV, yResampleV, zResampleV,
-                                     resampMethod, inPlane=True)
+    [x_resample, y_resample, _resample] = getResampledGrid(outpu_res,
+                                                            x_vals, y_vals, z_vals,
+                                                            grid_type)
+    resamp_scan_arr = imgResample3D(scan_arr,
+                                     x_vals, y_vals, z_vals,
+                                     x_resample, y_resample, _resample,
+                                     resamp_method, inPlane=True)
 
-    resampleGridS = [xResampleV, yResampleV, zResampleV]
-    planC = pc.importScanArray(resampScan3M,
-                                   resampleGridS[0], resampleGridS[1], resampleGridS[2],
-                                   modality, scanNum, planC)
-    resampleScanNum = len(planC.scan) - 1
+    resample_grid = [x_resample, y_resample, _resample]
+    planC = pc.importScanArray(resamp_scan_arr,
+                                   resample_grid[0], resample_grid[1], resample_grid[2],
+                                   modality, scan_num, planC)
+    resample_scan_num = len(planC.scan) - 1
 
     # 2. Extract patient outline
-    replaceStrNum = None
-    outline3M = getPatientOutline(resampScan3M, intensityThreshold)
-    resampSizeV = outline3M.shape
-    planC = pc.importStructureMask(outline3M, scanNum,
-                                       outlineStructName,
-                                       planC, replaceStrNum)
+    replace_str_num = None
+    outline_mask_arr = getPatientOutline(resamp_scan_arr, intensity_threshold)
+    resamp_size = outline_mask_arr.shape
+    planC = pc.importStructureMask(outline_mask_arr, scan_num,
+                                       outline_struct_name,
+                                       planC, replace_str_num)
 
     # 3. Crop to patient outline on each slice
-    sumSlices = np.sum(outline3M, axis=(0, 1))
-    validSlicesV = np.where(sumSlices > 0)[0]
-    numSlcs = len(validSlicesV)
-    limitsM = np.zeros((numSlcs, 4))
+    sum_slices = np.sum(outline_mask_arr, axis=(0, 1))
+    valid_slices = np.where(sum_slices > 0)[0]
+    num_slices = len(valid_slices)
+    limits = np.zeros((num_slices, 4))
 
-    for slc in range(numSlcs):
+    for slc in range(num_slices):
         minr, maxr, minc, maxc, _, _, _ = computeBoundingBox( \
-                outline3M[:, :, validSlicesV[slc]],
+                outline_mask_arr[:, :, valid_slices[slc]],
                 is2DFlag=True)
-        limitsM[slc, :] = [minr, maxr, minc, maxc]
+        limits[slc, :] = [minr, maxr, minc, maxc]
 
     # 4. Resize to 256 x 256 in-plane
-    resampSlc3M = resampScan3M[:, :, validSlicesV]
-    slcGridS = (resampleGridS[0], resampleGridS[1], resampleGridS[2][validSlicesV])
-    procScan3M, maskOut4M, resizeGridS = resizeScanAndMask(resampSlc3M,
-                                                               inputMask3M,
-                                                               slcGridS,
-                                                               outSizeV,
-                                                               resizeMethod,
-                                                               limitsM=limitsM)
-    planC = pc.importScanArray(procScan3M,
-                                   resizeGridS[0], resizeGridS[1], resizeGridS[2], \
-                                   modality, scanNum, planC)
-    procScanNum = len(planC.scan) - 1
+    resamp_slc_arr = resamp_scan_arr[:, :, valid_slices]
+    slc_grid = (resample_grid[0], resample_grid[1], resample_grid[2][valid_slices])
+    proc_scan_arr, mask_out_4d, resize_grid = resizeScanAndMask(resamp_slc_arr,
+                                                               input_mask_arr,
+                                                               slc_grid,
+                                                               out_size,
+                                                               resize_method,
+                                                               limitsM=limits)
+    planC = pc.importScanArray(proc_scan_arr,
+                                   resize_grid[0], resize_grid[1], resize_grid[2], \
+                                   modality, scan_num, planC)
+    proc_scan_num = len(planC.scan) - 1
 
-    scanList = [scanNum, resampleScanNum, procScanNum]
+    scanList = [scan_num, resample_scan_num, proc_scan_num]
 
-    return scanList, validSlicesV, resizeGridS, limitsM, planC
+    return scanList, valid_slices, resize_grid, limits, planC
 
 
 def normalize_data_HN_window(data):
@@ -177,7 +177,7 @@ def postproc_and_import_seg(output_dir, scan_list, planC, out_slices, resize_gri
                                                      resize_grid,
                                                      resamp_out_size,
                                                      method,
-                                                     limitsM=limits)
+                                                     limits=limits)
     # 2. Undo outline crop (slices)
     resamp_mask_4d = np.full((resamp_size[0], resamp_size[1],
                               resamp_size[2], unpad_mask_4d.shape[3]), 0)
@@ -251,18 +251,17 @@ def write_file(mask, dir_name, file_name, input_img):
 
     sitk.WriteImage(mask_img, out_file)
 
-def maskToDICOM(ptID, modelName, outputDir, structNums, scanNum, planC):
+def mask_to_DICOM(pt_id, model_name, output_dir, struct_nums, scan_num, planC):
     """ Export AI auto-segmentatiosn to DIOCM RTSTRUCTs """
 
-    newStructNums = len(planC.structure)
-    structFileName = f"{ptID}_{modelName}_AI_seg.dcm"
-    structFilePath = os.path.join(outputDir, structFileName)
-    seriesDescription = "AI Generated"
-    exportOpts = {'seriesDescription': seriesDescription}
-    indOrigV = np.array([cerrScn.getScanNumFromUID(planC.structure[structNum].assocScanUID, \
-                                                   planC) for structNum in structNums], dtype=int)
-    structsToExportV = np.array(structNums)[indOrigV == scanNum]
-    rtstruct_iod.create(structsToExportV, structFilePath, planC, exportOpts)
+    struct_file_name = f"{pt_id}_{model_name}_AI_seg.dcm"
+    struct_file_path = os.path.join(output_dir, struct_file_name)
+    series_description = "AI Generated"
+    export_opts = {'seriesDescription': series_description}
+    orig_indices = np.array([cerrScn.getScanNumFromUID(planC.structure[struct_num].assocScanUID, \
+                                                   planC) for struct_num in struct_nums], dtype=int)
+    structsToExportV = np.array(struct_nums)[orig_indices == scan_num]
+    rtstruct_iod.create(structsToExportV, struct_file_path, planC, export_opts)
 
     return 0
 
@@ -289,7 +288,7 @@ def main(train_opt, argv):
     # Import NIfTI scan to planC
     file_name = os.listdir(input_nii_path)[0]
     file_path = os.path.join(input_nii_path,file_name)
-    pt_id = Path(Path(input_nii_path).stem).stem
+    pt_id = Path(Path(file_path).stem).stem
     planC = pc.loadNiiScan(file_path, imageType="CT SCAN")
     orig_img = sitk.ReadImage(file_path)
 
@@ -376,7 +375,7 @@ def main(train_opt, argv):
         # Export to DICOM
         dcm_output_path = os.path.join(output_path, 'DICOM')
         os.makedirs(dcm_output_path, exist_ok=True)
-        maskToDICOM(pt_id, model_arch, dcm_output_path, proc_str_num, orig_scan_num, planC)
+        mask_to_DICOM(pt_id, model_arch, dcm_output_path, proc_str_num, orig_scan_num, planC)
 
 
     return output_files, proc_str_num, planC
