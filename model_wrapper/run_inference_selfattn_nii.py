@@ -224,7 +224,7 @@ def label_to_bin(label_map):
 def write_file(mask, out_file, input_img):
     """ Write mask to NIfTI file """
     
-    maskShift = np.moveaxis(mask,[2, 1, 0], [0, 2, 1])
+    maskShift = np.flip(np.moveaxis(mask,[2, 1, 0], [0, 2, 1]),0)
     mask_img = sitk.GetImageFromArray(maskShift)
 
     # Copy information from input img
