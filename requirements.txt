@@ -48,7 +48,7 @@ protobuf==4.25
 ptyprocess==0.7
 pure-eval==0.2
 pyasn1==0.6
-pycerr==0.1.dev528+ga2e52c0=pypi_0
+pycerr==0.1.dev557+g26cd8d9=pypi_0
 pydicom==2.4
 pygments==2.18
 pyparsing==3.1
