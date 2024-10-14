@@ -131,15 +131,15 @@ def postProcessCM(mask3M):
 
     # Morphological closing element
     radius1 = int(np.floor(4 / scale))
-    radius2 = int(np.floor(2 / scale))
+    radius2 = 2
 
     # Smoothing filter dimensions
-    filtSize = np.floor(5 / scale)
+    filtSize = np.floor(3 / scale)
     filtSize = int(max(1, 2 * np.floor(filtSize // 2) - 1))  # Nearest odd value
 
     # Min size for connected components
-    minSizeIsland = np.floor(20 / scale ** 2)
-    minSizeCC = np.floor(50 / scale ** 2)
+    minSizeCC1 = np.floor(50 / scale ** 2)
+    minSizeCC2 = np.floor(20 / scale ** 2)
 
     procMask3M = mask3M
     slicesV = np.where(np.sum(np.sum(mask3M.astype(float), axis=0), axis=0) > 0)[0]
@@ -148,27 +148,23 @@ def postProcessCM(mask3M):
     # Fill holes and retain largest CC
     strElement = mask.createStructuringElement(radius1, [1, 1, 1], shape='sphere')
     fillMask3m = mask.morphologicalClosing(maskSlc3M, strElement)
-    fillMask3m = mask.largestConnComps(fillMask3m, 1,
-                                       minSize=minSizeCC, dim=3)
+    fillConnMask3m = mask.largestConnComps(fillMask3m, 1,
+                                           minSize=minSizeCC1, dim=3)
 
     # Fill holes and remove islands
-    strElement2 = mask.createStructuringElement(radius2, [1, 1, 1],
-                                           shape='disk')
-    for s in range(fillMask3m.shape[2]):
-        slcMask = fillMask3m[:, :, s]
+    strElement2 = mask.createStructuringElement(radius2, [1, 1, 1], shape='disk')
+    for s in range(fillConnMask3m.shape[2]):
+        slcMask = fillConnMask3m[:, :, s]
         labelM = mask.morphologicalClosing(slcMask, strElement2)
-
-        strMaskM = mask.largestConnComps(labelM, 1,
-                                         minSize=minSizeIsland, dim=2)
-        fillMask3m[:, :, s] = strMaskM
-
+        fillConnMask3m[:, :, s] = mask.largestConnComps(labelM, 1,
+                                             minSize=minSizeCC2, dim=2)
     # Smooth
     if fillMask3m.shape[2] > 1:
         filtRadius = int((filtSize-1)/2)
-        smoothedLabel3M = mask.blurring(fillMask3m, filtRadius, filtType='box')
-        fillMask3m = smoothedLabel3M > 0.5
+        smoothedLabel3M = mask.blurring(fillConnMask3m, filtRadius, filtType='box')
+        fillConnMask3m = smoothedLabel3M > 0.5
 
-    procMask3M[:, :, slicesV] = fillMask3m
+    procMask3M[:, :, slicesV] = fillConnMask3m
 
     return procMask3M
 
@@ -407,7 +403,7 @@ def exportSegs(planC, scanIndex, scanBounds, modelName, segPath, outputPath, ptI
     # Reverse transformations
     numStructs = len(strToLabelMap)
     fullMask3M = np.full(origSize, fill_value=0)
-    procmask4M = np.zeros(origSize+(numStructs,))
+    labelMap3M = np.zeros(origSize)
     replaceStrNum = None
     procStrV = []
 
@@ -424,35 +420,25 @@ def exportSegs(planC, scanIndex, scanBounds, modelName, segPath, outputPath, ptI
         procmask3M = postProc(modelName, fullMask3M)
         planC = pc.importStructureMask(procmask3M, scanIndex,
                                        strName, planC, replaceStrNum)
-        procmask4M[:,:,:,labelIdx] = procmask3M
+        labelMap3M[procmask3M == 1] = labelIdx + 1
 
         procStr = len(planC.structure) - 1
         procStrV.append(procStr)
 
     #pc.saveNiiStructure(structFilePath, procStrV, planC, labelDict=strToLabelMap, dim=4)
 
-    return planC, procStrV, procmask4M
+    return planC, procStrV, labelMap3M
 
-def writeFile(mask, fileName, inputImg):
+def writeFile(labelMap, fileName, inputImg):
     """ Write mask to NIfTI file """
-    maskShift = np.moveaxis(mask,[3, 2, 1, 0],[0, 1, 2, 3])
-    maskImg = sitk.GetImageFromArray(maskShift, isVector=False)
+    labelMapShift = np.moveaxis(labelMap,[2, 1, 0],[0, 2, 1])
+    labelMapShift = np.flip(labelMapShift,0)
+    labelMapImg = sitk.GetImageFromArray(labelMapShift)
     
     # Copy information from input img
-    origin3d = list(inputImg.GetOrigin())
-    origin4d = origin3d + [0.0]  # Append 0.0 for the 4th dimension
-    maskImg.SetOrigin(origin4d)
-    spacing3d = list(inputImg.GetSpacing())
-    spacing4d = spacing3d + [1.0]
-    maskImg.SetSpacing(spacing4d)
-    direction3d = inputImg.GetDirection()
-    direction4d = [ direction3d[0], direction3d[1], direction3d[2], 0.0,
-                    direction3d[3], direction3d[4], direction3d[5], 0.0,
-                    direction3d[6], direction3d[7], direction3d[8], 0.0,
-                    0.0,            0.0,            0.0,            1.0]
-    maskImg.SetDirection(direction4d)
+    labelMapImg.CopyInformation(inputImg)
 
-    sitk.WriteImage(maskImg, fileName)
+    sitk.WriteImage(labelMapImg, fileName)
 
     return 0
 
@@ -476,8 +462,6 @@ def main(inputPath, sessionpath, outputPath, DCMexportFlag=False):
     # Create output and session dirs
     os.makedirs(sessionpath, exist_ok=True)
     os.makedirs(outputPath, exist_ok=True)
-    niiOutPath = os.path.join(outputPath, 'NIfTI')
-    os.makedirs(niiOutPath, exist_ok=True)
 
     # Read nii image
     fileName = os.listdir(inputPath)[0]
@@ -491,31 +475,31 @@ def main(inputPath, sessionpath, outputPath, DCMexportFlag=False):
     scanIndex, scanBounds, planC = preProcChew(planC, sessionpath)
     tempNiiPath = os.path.join(sessionpath, 'chew_out_nii')
     run_fuse_inference_chewing_nii.main(sessionpath, tempNiiPath)
-    planC, chewStrNums, chewMask = exportSegs(planC, scanIndex, scanBounds,
+    planC, chewStrNums, chewLabelMap = exportSegs(planC, scanIndex, scanBounds,
                        modelNames[0], tempNiiPath, outputPath, ptID)
 
     # Segment larynx
     scanIndex, scanBounds, planC = preProcLar(planC, scanIndex, sessionpath)
     tempNiiPath = os.path.join(sessionpath, 'larynx_out_nii')
     run_fuse_inference_larynx_nii.main(sessionpath, tempNiiPath)
-    planC, larStrNum, larynxMask = exportSegs(planC, scanIndex, scanBounds, modelNames[1],
+    planC, larStrNum, larynxLabelMap = exportSegs(planC, scanIndex, scanBounds, modelNames[1],
                        tempNiiPath, outputPath, ptID)
 
     # Segment pharyngeal constrictor
     scanIndex, scanBounds, planC = preProcCM(planC, scanIndex, sessionpath)
     tempNiiPath = os.path.join(sessionpath, 'cm_out_nii')
     run_fuse_inference_constrictor_nii.main(sessionpath, tempNiiPath)
-    planC, cmStrNum, cmMask = exportSegs(planC, scanIndex, scanBounds, modelNames[2],
+    planC, cmStrNum, cmLabelMap = exportSegs(planC, scanIndex, scanBounds, modelNames[2],
                        tempNiiPath, outputPath, ptID)
 
     outputStrNumV = chewStrNums + larStrNum + cmStrNum
 
     # Export to NIfTI
     outputFiles = []
-    maskImgList = [chewMask, larynxMask, cmMask]
+    maskImgList = [chewLabelMap, larynxLabelMap, cmLabelMap]
     for modelNum in range(len(modelNames)):
         structFileName = ptID + '_' + modelNames[modelNum] + '_AI_seg.nii.gz'
-        structFilePath = os.path.join(niiOutPath, structFileName)
+        structFilePath = os.path.join(outputPath, structFileName)
         writeFile(maskImgList[modelNum], structFilePath, origImg)
         outputFiles.append(structFilePath)
 
@@ -527,7 +511,7 @@ def main(inputPath, sessionpath, outputPath, DCMexportFlag=False):
 
     # Clear session dir
     shutil.rmtree(sessionpath)
-    return planC, outputStrNumV, outputFiles
+    return outputFiles, outputStrNumV, planC
 
 
 if __name__ == '__main__':

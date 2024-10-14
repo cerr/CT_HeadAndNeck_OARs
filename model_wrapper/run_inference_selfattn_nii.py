@@ -61,7 +61,7 @@ def process_image(planC):
 
     grid_type = 'center'
     resamp_method = 'sitkBSpline'
-    outpu_res = [0.1, 0.1, 0]  # Output res: 1mm x 1mm in-plane
+    output_res = [0.1, 0.1, 0]  # Output res: 1mm x 1mm in-plane
 
     resize_method = 'pad2d'
     out_size = [256, 256]
@@ -76,15 +76,15 @@ def process_image(planC):
     scan_arr = planC.scan[scan_num].getScanArray()
 
     # 1. Resample
-    [x_resample, y_resample, _resample] = getResampledGrid(outpu_res,
+    [x_resample, y_resample, z_resample] = getResampledGrid(output_res,
                                                             x_vals, y_vals, z_vals,
                                                             grid_type)
     resamp_scan_arr = imgResample3D(scan_arr,
                                      x_vals, y_vals, z_vals,
-                                     x_resample, y_resample, _resample,
+                                     x_resample, y_resample, z_resample,
                                      resamp_method, inPlane=True)
 
-    resample_grid = [x_resample, y_resample, _resample]
+    resample_grid = [x_resample, y_resample, z_resample]
     planC = pc.importScanArray(resamp_scan_arr,
                                    resample_grid[0], resample_grid[1], resample_grid[2],
                                    modality, scan_num, planC)
@@ -93,7 +93,6 @@ def process_image(planC):
     # 2. Extract patient outline
     replace_str_num = None
     outline_mask_arr = getPatientOutline(resamp_scan_arr, intensity_threshold)
-    resamp_size = outline_mask_arr.shape
     planC = pc.importStructureMask(outline_mask_arr, scan_num,
                                        outline_struct_name,
                                        planC, replace_str_num)
@@ -120,7 +119,7 @@ def process_image(planC):
                                                                resize_method,
                                                                limitsM=limits)
     planC = pc.importScanArray(proc_scan_arr,
-                                   resize_grid[0], resize_grid[1], resize_grid[2], \
+                                   resize_grid[0], resize_grid[1], resize_grid[2],
                                    modality, scan_num, planC)
     proc_scan_num = len(planC.scan) - 1
 
@@ -144,27 +143,20 @@ def add_CT_offset(scan):
     return offset_scan
 
 
-def postproc_and_import_seg(output_dir, scan_list, planC, out_slices, resize_grid, limits):
+def postproc_and_import_seg(label_map, scan_list, planC, out_slices, resize_grid, limits):
     """ Post-process & import label map to planC """
 
     orig_scan_num = scan_list[0]
-
-    # Read AI-generated mask
-    nii_glob = glob.glob(os.path.join(output_dir, '*.nii.gz'))
-    mask_list = []
-    for file_path in nii_glob:
-        print('Importing ' + file_path + '...')
-        masks_4d = sitk.GetArrayFromImage(sitk.ReadImage(os.path.join(output_dir, file_path)))
-        masks_4d = np.moveaxis(masks_4d,[3, 2, 1, 0],[0, 1, 2, 3])
-        if masks_4d.ndim == 3:
-            temp = np.zeros(masks_4d.shape + (1,))
-            temp[:, :, :, 0] = masks_4d
-            masks_4d = temp
-        mask_list.append(masks_4d)
-    output_mask_4d = np.concatenate(mask_list, axis=-1)
-
-    # Undo pre-processing transformations
     resamp_scan_num = scan_list[1]
+    orig_scan_size = planC.scan[orig_scan_num].getScanSize()
+
+
+    # Convert label map to binary mask stack
+    output_mask = label_to_bin(label_map)     #4-D
+
+    #------------------------------------
+    # Undo pre-processing transformations
+    #------------------------------------
 
     # 1. Undo 2d cropping and resizing
     output_scan = None
@@ -172,47 +164,49 @@ def postproc_and_import_seg(output_dir, scan_list, planC, out_slices, resize_gri
     resamp_size = planC.scan[resamp_scan_num].getScanSize()
     resamp_out_size = [resamp_size[0], resamp_size[1], len(out_slices)]
 
-    _, unpad_mask_4d, unpad_grid = resizeScanAndMask(output_scan,
-                                                     output_mask_4d,
-                                                     resize_grid,
-                                                     resamp_out_size,
-                                                     method,
-                                                     limits=limits)
-    # 2. Undo outline crop (slices)
-    resamp_mask_4d = np.full((resamp_size[0], resamp_size[1],
-                              resamp_size[2], unpad_mask_4d.shape[3]), 0)
-    resamp_mask_4d[:, :, out_slices, :] = unpad_mask_4d
+    _, unpad_mask, unpad_grid = resizeScanAndMask(output_scan,
+                                                  output_mask,
+                                                  resize_grid,
+                                                  resamp_out_size,
+                                                  method,
+                                                  limitsM=limits)
+    # 2. Undo crop (slices)
+    resamp_mask = np.full((resamp_size[0], resamp_size[1],
+                          resamp_size[2], unpad_mask.shape[3]), 0)
+    resamp_mask[:, :, out_slices, :] = unpad_mask
 
-    # Import to planC
+    #------------------------------------
+    # Resample and post-process masks
+    #------------------------------------
     num_components = 1
     replace_str_num = None
+    label_map_out = np.zeros(orig_scan_size)
     proc_str_list = []
-    proc_mask_list = []
+
     # Loop over labels
     for label_idx in range(len(label_dict)):
-        # Import mask to processed scan
+
+        # Import mask to resampled scan
         str_name = output_str_names[label_idx]
         mask_idx = output_str_labels[label_idx] - 1
-        output_mask = resamp_mask_4d[:, :, :, mask_idx]
+        output_mask = resamp_mask[:, :, :, mask_idx]
         planC = pc.importStructureMask(output_mask, resamp_scan_num,
                                        str_name, planC, replace_str_num)
         proc_str = len(planC.structure) - 1
 
         # Copy to original scan (undo resampling)
         planC = structure.copyToScan(proc_str, orig_scan_num, planC)
-        proc_str_list.append(proc_str) #Since resamp str is eventually deleted
+        del planC.structure[proc_str] #Delete intermediate (resampled) struct
+        proc_str_list.append(proc_str) 
 
         # Post-process and replace input structure in planC
         proc_mask_3d, planC = structure.getLargestConnComps(proc_str, num_components,
                                                      planC, saveFlag=True,
                                                      replaceFlag=True,
                                                      procSructName=str_name)
-        proc_mask_4d = np.full((np.shape(proc_mask_3d) + (1,)), 0)
-        proc_mask_4d[:, :, :, 0] = proc_mask_3d
-        proc_mask_list.append(proc_mask_4d)
-        del planC.structure[proc_str]
+        label_map_out[proc_mask_3d] = output_str_labels[label_idx]
 
-    return planC, proc_str_list, proc_mask_list
+    return planC, proc_str_list, label_map_out
 
 
 def label_to_bin(label_map):
@@ -227,29 +221,19 @@ def label_to_bin(label_map):
     return bin_mask
 
 
-def write_file(mask, dir_name, file_name, input_img):
+def write_file(mask, out_file, input_img):
     """ Write mask to NIfTI file """
-    if not os.path.exists(dir_name):
-        os.makedirs(dir_name)
-    out_file = os.path.join(dir_name, file_name)
-    maskShift = np.moveaxis(mask,[3, 2, 1, 0], [0, 1, 2, 3])
-    mask_img = sitk.GetImageFromArray(maskShift, isVector=False)
+    
+    maskShift = np.moveaxis(mask,[2, 1, 0], [0, 2, 1])
+    mask_img = sitk.GetImageFromArray(maskShift)
 
     # Copy information from input img
-    origin_3d = list(input_img.GetOrigin())
-    origin_4d = origin_3d + [0.0]  # Append 0.0 for the 4th dimension
-    mask_img.SetOrigin(origin_4d)
-    spacing_3d = list(input_img.GetSpacing())
-    spacing_4d = spacing_3d + [1.0]
-    mask_img.SetSpacing(spacing_4d)
-    direction_3d = list(input_img.GetDirection())
-    direction_4d = [direction_3d[0], direction_3d[1], direction_3d[2], 0.0,
-                    direction_3d[3], direction_3d[4], direction_3d[5], 0.0,
-                    direction_3d[6], direction_3d[7], direction_3d[8], 0.0,
-                    0.0,             0.0,             0.0,             1.0]
-    mask_img.SetDirection(direction_4d)
+    mask_img.CopyInformation(input_img)
 
+    # Write to file
     sitk.WriteImage(mask_img, out_file)
+
+    return 0
 
 def mask_to_DICOM(pt_id, model_name, output_dir, struct_nums, scan_num, planC):
     """ Export AI auto-segmentatiosn to DIOCM RTSTRUCTs """
@@ -260,8 +244,8 @@ def mask_to_DICOM(pt_id, model_name, output_dir, struct_nums, scan_num, planC):
     export_opts = {'seriesDescription': series_description}
     orig_indices = np.array([cerrScn.getScanNumFromUID(planC.structure[struct_num].assocScanUID, \
                                                    planC) for struct_num in struct_nums], dtype=int)
-    structsToExportV = np.array(struct_nums)[orig_indices == scan_num]
-    rtstruct_iod.create(structsToExportV, struct_file_path, planC, export_opts)
+    structs_to_export = np.array(struct_nums)[orig_indices == scan_num]
+    rtstruct_iod.create(structs_to_export, struct_file_path, planC, export_opts)
 
     return 0
 
@@ -270,7 +254,6 @@ def main(train_opt, argv):
     input_nii_path = argv[1]
     session_path = argv[2]
     output_path = argv[3]
-    nii_output_path = os.path.join(output_path, 'NIfTI')
     os.makedirs(output_path, exist_ok=True)
 
     DCMexportFlag = False
@@ -281,10 +264,10 @@ def main(train_opt, argv):
     model_in_path = os.path.join(session_path, 'input_nii')
     model_out_path = os.path.join(session_path, 'output_nii')
     os.makedirs(session_path, exist_ok=True)
-    os.makedirs(nii_output_path, exist_ok=True)
+    os.makedirs(output_path, exist_ok=True)
     os.makedirs(model_in_path, exist_ok=True)
     os.makedirs(model_out_path, exist_ok=True)
-
+    
     # Import NIfTI scan to planC
     file_name = os.listdir(input_nii_path)[0]
     file_path = os.path.join(input_nii_path,file_name)
@@ -312,7 +295,7 @@ def main(train_opt, argv):
     ("******* Filename *******")
     print(proc_scan_filename)
     ct_arr, sitk_img = load_file(proc_scan_filepath)
-    ct_arr = np.array(ct_arr)
+    ct_arr = np.flip(np.array(ct_arr),2)
     img_arr = add_CT_offset(ct_arr)
     print(ct_arr.shape)
 
@@ -332,7 +315,6 @@ def main(train_opt, argv):
     print(np.shape(img_flip_norm_arr))
     # originally added for comparison, make it zero, should work
     label_arr = np.zeros(shape=np.shape(img_flip_norm_arr))
-    #print(np.shape(label_arr))
 
     images_ct_val = np.concatenate((np.array(img_flip_norm_arr),
                                         np.array(label_arr)), 1)
@@ -354,31 +336,21 @@ def main(train_opt, argv):
             tep_dice_loss, ori_img, seg, gt, image_numpy = model.net_G_A_A2B_Segtest_image()
             label_map[:, :, i] = seg
 
-    # Convert 3D label map to 4D stack of binary masks
-    bin_mask = label_to_bin(label_map)
-
-    print("****** Export mask to NIfTI ******")
-    mask_filename = f"{pt_id}_model_out.nii.gz"
-    write_file(bin_mask, model_out_path, mask_filename, sitk_img)
-
     print("****** Undo pre-processing transformations ******")
-    planC, proc_str_num, proc_mask_list = postproc_and_import_seg(model_out_path, scan_list, planC,
+    planC, proc_str_num, proc_label_map = postproc_and_import_seg(label_map, scan_list, planC,
                                           valid_slices, proc_grid, limits)
 
     print("****** Export structure to NIfTI ******")
-    output_files = []
-    for mask_num in range(len(proc_mask_list)):
-        struct_file_name = f"{pt_id}_{output_str_names[mask_num]}_AI_seg.nii.gz"
-        write_file(proc_mask_list[mask_num], nii_output_path, struct_file_name, orig_img)
+    label_out_file_name = f"{pt_id}_{model_arch}_AI_seg.nii.gz"
+    label_out_file_path = os.path.join(output_path, label_out_file_name)
+    write_file(proc_label_map, label_out_file_path, orig_img)
 
     if DCMexportFlag:
         # Export to DICOM
-        dcm_output_path = os.path.join(output_path, 'DICOM')
-        os.makedirs(dcm_output_path, exist_ok=True)
-        mask_to_DICOM(pt_id, model_arch, dcm_output_path, proc_str_num, orig_scan_num, planC)
+        mask_to_DICOM(pt_id, model_arch, output_path, proc_str_num, orig_scan_num, planC)
 
 
-    return output_files, proc_str_num, planC
+    return label_out_file_path, proc_str_num, planC
 
 if __name__ == "__main__":
     opt = TrainOptions().parse()
