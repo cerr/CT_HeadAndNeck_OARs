@@ -41,14 +41,11 @@ pip install -r requirements.txt
 ** Option-1: Apply DeeplabV3+ ensembles sequentially to DICOM data **
 python run_inference_deeplab.py <input_dicom_directory> <session_directory> <output_dicom_directory>  
 
-** Option-2: Apply individual models to processed NIfTI data **
-python run_fuse_inference_chewing_nii <input_nii_directory> <output_nii_directory>
-python run_fuse_inference_larynx_nii.py <input_nii_directory> <output_nii_directory>
-python run_fuse_inference_constrictor_nii.py  <input_nii_directory> <output_nii_directory>
-
+** Option-2: DeeplabV3+ ensembles sequentially to processed NIfTI data **
+python run_inference_deeplab_nii.py <input_nii_directory> <session_directory> <output_nii_directory>
 
 ### OAR group-2 
-python run_inference_selfattn_nii.py <input_nii_directory> <output_nii_directory>  #OAR group-2
+python run_inference_selfattn_nii.py <input_nii_directory> <session_directory> <output_nii_directory>  
 
 ```
   
