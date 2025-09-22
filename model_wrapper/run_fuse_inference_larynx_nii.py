@@ -7,7 +7,7 @@
 # Usage: python run_fuse_inference_larynx_nii.py [inputpath] [outputpath]
 # Output: 2D masks saved as NIfTI files to output folder
 
-import sys
+import gzip, sys
 from time import process_time
 
 from dataloaders.custom_dataset import *
@@ -53,16 +53,16 @@ class Larynx(object):
             self.mean = (0.3416, 0.3416, 0.3416)
             self.std = (0.1889, 0.1889, 0.1889)
             self.dataPath =  os.path.join(self.inputDir,'axial')
-            self.modelPath = os.path.join(cDir, 'models', 'Larynx_Ax_model.pth.tar')
+            self.modelPath = os.path.join(cDir, 'models', 'Larynx_Ax_model_state.pth.gz')
         elif view == 'sagittal':
             self.mean = (0.3157, 0.3157, 0.3157)
             self.std = (0.1803, 0.1803, 0.1803)
-            self.modelPath = os.path.join(cDir, 'models', 'Larynx_Sag_model.pth.tar')
+            self.modelPath = os.path.join(cDir, 'models', 'Larynx_Sag_model_state.pth.gz')
             self.dataPath = os.path.join(self.inputDir,'sagittal')
         elif view == 'coronal':
             self.mean = (0.3233, 0.3233, 0.3233)
             self.std = (0.1917, 0.1917, 0.1917)
-            self.modelPath = os.path.join(cDir, 'models', 'Larynx_Cor_model.pth.tar')
+            self.modelPath = os.path.join(cDir, 'models', 'Larynx_Cor_model_state.pth.gz')
             self.dataPath = os.path.join(self.inputDir,'coronal')
         else:
             raise ValueError('Invalid input view = %s' %(view))
@@ -92,15 +92,17 @@ class Larynx(object):
             self.cuda = True
             print('GPU device count: ', torch.cuda.device_count())
             device = torch.device("cuda:0")
-            checkpoint = torch.load(self.modelPath)
-            self.model.load_state_dict(checkpoint['state_dict'])
+            with gzip.open(self.modelPath, "rb") as f:
+                state_dict = torch.load(f, map_location=device)
+            self.model.load_state_dict(state_dict)
             self.model = self.model.to(device)
         else:
             self.cuda = False
             print('Using CPU')
             device = torch.device('cpu')
-            checkpoint = torch.load(self.modelPath, map_location=device)
-            self.model.load_state_dict(checkpoint['state_dict'])
+            with gzip.open(self.modelPath, "rb") as f:
+                state_dict = torch.load(f, map_location=device)
+            self.model.load_state_dict(state_dict)
 
         print("%.1f" %(process_time() - t1) + ' s')
         print('Loaded.')
