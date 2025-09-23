@@ -249,16 +249,9 @@ def mask_to_DICOM(pt_id, model_name, output_dir, struct_nums, scan_num, planC):
 
     return 0
 
-def main(train_opt, argv):
+def main(input_nii_path, session_path, output_path, DCMexportFlag=False):
 
-    input_nii_path = argv[1]
-    session_path = argv[2]
-    output_path = argv[3]
     os.makedirs(output_path, exist_ok=True)
-
-    DCMexportFlag = False
-    if len(argv) > 4:
-        DCMexportFlag = argv[4]
 
     # Create output and session dirs
     model_in_path = os.path.join(session_path, 'input_nii')
@@ -267,13 +260,14 @@ def main(train_opt, argv):
     os.makedirs(output_path, exist_ok=True)
     os.makedirs(model_in_path, exist_ok=True)
     os.makedirs(model_out_path, exist_ok=True)
+
+    train_opt = TrainOptions().parse() 
     
     # Import NIfTI scan to planC
-    file_name = os.listdir(input_nii_path)[0]
-    file_path = os.path.join(input_nii_path,file_name)
-    pt_id = Path(Path(file_path).stem).stem
-    planC = pc.loadNiiScan(file_path, imageType="CT SCAN")
-    orig_img = sitk.ReadImage(file_path)
+    file_name = os.path.basename(input_nii_path)    
+    pt_id = file_name.split('.nii')[0]
+    planC = pc.loadNiiScan(input_nii_path, imageType="CT SCAN")
+    orig_img = sitk.ReadImage(input_nii_path)
 
     # Pre-process and export to NIfTI
     scan_list, valid_slices, proc_grid, limits, planC = process_image(planC)
@@ -354,6 +348,9 @@ def main(train_opt, argv):
 
 if __name__ == "__main__":
     opt = TrainOptions().parse()
-    main(opt, sys.argv)
+    DCMexportFlag = False
+    if len(sys.argv) > 4:
+        DCMexportFlag = sys.argv[4]
+    main(opt, sys.argv[1], sys.argv[2], sys.argv[3], DCMexportFlag)
 
 

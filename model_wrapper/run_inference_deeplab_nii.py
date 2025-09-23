@@ -457,18 +457,17 @@ def maskToDICOM(ptID, modelName, outputDir, structNums, scanNum, planC):
 
     return 0
 
-def main(inputPath, sessionpath, outputPath, DCMexportFlag=False):
+def main(inputFilePath, sessionpath, outputPath, DCMexportFlag=False):
 
     # Create output and session dirs
     os.makedirs(sessionpath, exist_ok=True)
     os.makedirs(outputPath, exist_ok=True)
 
     # Read nii image
-    fileName = os.listdir(inputPath)[0]
-    filePath = os.path.join(inputPath, fileName)
-    ptID = Path(Path(fileName).stem).stem
-    planC = pc.loadNiiScan(filePath, imageType="CT SCAN")
-    origImg = sitk.ReadImage(filePath)
+    fileName = os.path.basename(inputFilePath)
+    ptID = fileName.split('.nii')[0]
+    planC = pc.loadNiiScan(inputFilePath, imageType="CT SCAN")
+    origImg = sitk.ReadImage(inputFilePath)
 
     modelNames = ['chew', 'larynx', 'cm']
     # Segment chewing structures

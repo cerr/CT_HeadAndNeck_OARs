@@ -38,14 +38,27 @@ pip install -r requirements.txt
 ```  
 ### OAR group-1:
 
-** Option-1: Apply DeeplabV3+ ensembles sequentially to DICOM data **
+** Option-1: Apply DeeplabV3+ models to DICOM data **
 python run_inference_deeplab.py <input_dicom_directory> <session_directory> <output_dicom_directory>  
 
-** Option-2: DeeplabV3+ ensembles sequentially to processed NIfTI data **
-python run_inference_deeplab_nii.py <input_nii_directory> <session_directory> <output_nii_directory>
+** Option-2: Apply DeeplabV3+ models to NIfTI data **  
+[Single file]  
+python run_inference_deeplab_nii.py <input_nii_file> <session_directory> <output_nii_directory>  
+[Batch mode]
+python batch_run_inference_deeplab_nii.py <input_nii_directory> <session_directory> <output_nii_directory>
 
-### OAR group-2 
+### OAR group-2  
+** Apply self-attention model to NIfTI data **  
+[Single file] 
 python run_inference_selfattn_nii.py <input_nii_directory> <session_directory> <output_nii_directory>  
+[Batch mode]
+python batch_run_inference_selfattn_nii.py <input_nii_directory> <session_directory> <output_nii_directory> 
+
+### All OARs   
+** To NIfTI data **  
+[Batch mode]
+python batch_run_inference_hn_oars_nii.py <input_nii_directory> <session_directory> <output_nii_directory>
+
 
 ```
   
