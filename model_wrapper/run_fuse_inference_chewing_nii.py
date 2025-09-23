@@ -63,7 +63,7 @@ class Chewing(object):
         elif view == 'coronal':
             self.mean = (0.2663, 0.2663, 0.2663)
             self.std = (0.2081, 0.2081, 0.2081)
-            self.modelPath = os.path.join(cDir, 'models', 'MM_PM_Cor_model_state.pth.gz'))
+            self.modelPath = os.path.join(cDir, 'models', 'MM_PM_Cor_model_state.pth.gz')
             self.dataPath = os.path.join(self.inputDir,'coronal')
         else:
             raise ValueError('Invalid input view = %s' %(view))
