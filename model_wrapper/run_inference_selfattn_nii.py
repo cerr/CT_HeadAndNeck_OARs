@@ -307,29 +307,40 @@ def main(input_nii_path, session_path, output_path, DCMexportFlag=False):
 
     print("****** Final scan shape ******")
     print(np.shape(img_flip_norm_arr))
-    # originally added for comparison, make it zero, should work
-    label_arr = np.zeros(shape=np.shape(img_flip_norm_arr))
 
-    images_ct_val = np.concatenate((np.array(img_flip_norm_arr),
-                                        np.array(label_arr)), 1)
+    # originally added for comparison, make it zero, should work
+    images = torch.tensor(img_flip_norm_arr, dtype=torch.float32)  
+    labels = torch.zeros_like(images)                                               # [N,1,H,W]
+    images_ct_val = torch.utils.data.TensorDataset(images, labels)
+    print('Data set size: ', images.shape)
+    print('****** Data loading complete ******')
+
+
+    # Select device
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    print("Using device:", device)
+    if device=="cuda":
+      model.netSeg_A.to(device)
+      model.netSeg_B.to(device)
     label_map = np.zeros((input_size, input_size, length),
                              dtype=np.uint8)
-
-    print('Data set size: ', img_flip_norm_arr.shape)
-    print('****** Data loading complete ******')
 
     print("****** Apply model ******")
     train_loader_c1 = torch.utils.data.DataLoader(images_ct_val,
                                                   batch_size=1,
                                                   shuffle=False,
-                                                  num_workers=1)
+                                                  num_workers=0)
 
     with torch.no_grad():  # no grade calculation
-        for i, (data_val) in enumerate(zip(train_loader_c1)):
-            model.set_test_input(data_val)
+        for i, (img, label) in enumerate(train_loader_c1):
+            img = img.to(device)
+            label = label.to(device)
+            input_tensor = torch.cat([img, label], dim=1)
+            model.set_test_input(input_tensor)
             tep_dice_loss, ori_img, seg, gt, image_numpy = model.net_G_A_A2B_Segtest_image()
             label_map[:, :, i] = seg
-
+    
+    
     print("****** Undo pre-processing transformations ******")
     planC, proc_str_num, proc_label_map = postproc_and_import_seg(label_map, scan_list, planC,
                                           valid_slices, proc_grid, limits)
