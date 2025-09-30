@@ -191,9 +191,10 @@ class cycle_gan_unet_ct_seg_baseline(BaseModel):
         #     #networks.print_network(self.netSeg_B)
         # print('-----------------------------------------------')
     def set_test_input(self,input):
-        input_A1=input[0]
-        self.test_A,self.test_A_y=torch.split(input_A1, input_A1.size(0), dim=1)    
+        #input_A1=input[0]
+        #self.test_A,self.test_A_y=torch.split(input_A1, input_A1.size(0), dim=1)   
         #self.test_A=input_A1
+        self.test_A, self.test_A_y = torch.split(input, 1, dim=1)  # always split channels, size=1
         
     def net_G_A_load_weight(self,weight):
         self.load_network(self.netG_A, 'G_A', weight)
@@ -414,9 +415,10 @@ class cycle_gan_unet_ct_seg_baseline(BaseModel):
         #return dice_0.data,dice_1.data,dice_2.data,dice_3.data,dice_4.data,dice_5.data,dice_6.data,dice_7.data,dice_8.data
 
     def set_test_input(self,input):
-        input_A1=input[0]
-        self.test_A,self.test_A_y=torch.split(input_A1, input_A1.size(0), dim=1)    
-        
+        #input_A1=input[0]
+        #self.test_A,self.test_A_y=torch.split(input_A1, input_A1.size(0), dim=1)    
+        self.test_A, self.test_A_y = torch.split(input, 1, dim=1)  
+
     def net_G_A_A2B_Segtest_image(self):
         if len(self.gpu_ids) and torch.cuda.is_available(): #rkp, added check for length of gpu_ids
             self.test_A=self.test_A.cuda()
