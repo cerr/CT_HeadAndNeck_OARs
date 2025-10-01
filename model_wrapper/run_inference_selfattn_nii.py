@@ -319,7 +319,7 @@ def main(input_nii_path, session_path, output_path, DCMexportFlag=False):
     # Select device
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print("Using device:", device)
-    if device=="cuda":
+    if torch.cuda.is_available(): 
       model.netSeg_A.to(device)
       model.netSeg_B.to(device)
     label_map = np.zeros((input_size, input_size, length),

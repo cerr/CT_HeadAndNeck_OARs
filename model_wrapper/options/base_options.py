@@ -66,7 +66,6 @@ class BaseOptions():
                 torch.cuda.set_device(self.opt.gpu_ids[0])
         else:
             print("This is running on CPU")
-            torch.device = 'cpu'
             self.opt.gpu_ids = []
 
 
