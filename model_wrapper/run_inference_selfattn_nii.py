@@ -358,10 +358,9 @@ def main(input_nii_path, session_path, output_path, DCMexportFlag=False):
     return label_out_file_path, proc_str_num, planC
 
 if __name__ == "__main__":
-    opt = TrainOptions().parse()
     DCMexportFlag = False
     if len(sys.argv) > 4:
         DCMexportFlag = sys.argv[4]
-    main(opt, sys.argv[1], sys.argv[2], sys.argv[3], DCMexportFlag)
+    main(sys.argv[1], sys.argv[2], sys.argv[3], DCMexportFlag)
 
 
