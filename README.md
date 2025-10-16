@@ -1,20 +1,18 @@
 # CT_HeadAndNeck_OARs
 This repository provides pre-trained deep learning models for segmenting the organs at risk in radiotherapy treatment planning
 of head and neck cancer patients. It operates on axial CT scans acquired for this purpose in the head-first supine (HFS) orientation.  
-    
-Two different architectures are used: a  set of of DeepLabV3+ model ensembles [1] for sequential localization and segmentation of:    
-          
-### OAR group 1          
+              
+### OAR group 1 
+Segmented using DeepLabV3+ model ensembles [1] for sequential localization to delineate:  
 * Left masseter    
 * Right masseter    
 * Left medial pterygoid    
 * Right medial pterygoid    
 * Larynx    
 * Pharyngeal constrictor muscle     
-  
-and a self-attention U-net network [2] to segment:    
-  
+    
 ### OAR group 2
+Segmented using self-attention U-net network [2] to delineate:    
 * Left parotid    
 * Right parotid    
 * Left submandibular gland  
@@ -24,42 +22,70 @@ and a self-attention U-net network [2] to segment:
 * Brain stem    
 * Oral cavity      
 
-    
-## Installing dependencies  
-Dependencies specified in `requirements.txt` may be installed as follows:  
-  
-````
+## Usage
+
+### Demo
+See [Jupyter notebook](https://github.com/cerr/pyCERR-Notebooks/blob/main/autosegment_CT_HeadAndNeck_OARs.ipynb) for sample workflow. 
+
+### Installation    
+* Use the [model installer](https://github.com/cerr/model_installer/) to download the trained models. 
+
+```
+git clone https://github.com/cerr/model_installer.git
+cd model_installer
+./installer.sh -m 6 -p N
+```
+
+* Create a virtual environment and install dependencies (from [requirements.txt](https://github.com/cerr/CT_HeadAndNeck_OARs/blob/main/requirements.txt).
+   
+Using [uv](https://github.com/astral-sh/uv)
+```
+uv venv .venv 
+source .venv/bin/activate
+uv pip install --no-deps -r  requirements.txt --extra-index-url https://download.pytorch.org/whl/cu92 --index-strategy unsafe-best-match
+```
+        
+Or using Conda:    
+```
 conda create -y --name CT_HeadAndNeckOARs python=3.8.19
 conda activate CT_HeadAndNeckOARs
 pip install -r requirements.txt  
-````
+```
   
 ## Running pre-trained models  
-```  
+
 ### OAR group-1:
 
-** Option-1: Apply DeeplabV3+ models to DICOM data **
-python run_inference_deeplab.py <input_dicom_directory> <session_directory> <output_dicom_directory>  
+**Option-1: Apply DeeplabV3+ models to DICOM data**
+```
+python run_inference_deeplab.py <input_dicom_directory> <session_directory> <output_dicom_directory>
+```
 
-** Option-2: Apply DeeplabV3+ models to NIfTI data **  
-[Single file]  
-python run_inference_deeplab_nii.py <input_nii_file> <session_directory> <output_nii_directory>  
-[Batch mode]
+**Option-2: Apply DeeplabV3+ models to NIfTI data**  
+* *Single file* 
+```
+python run_inference_deeplab_nii.py <input_nii_file> <session_directory> <output_nii_directory>
+```
+* *Batch mode*
+```
 python batch_run_inference_deeplab_nii.py <input_nii_directory> <session_directory> <output_nii_directory>
+```
 
 ### OAR group-2  
-** Apply self-attention model to NIfTI data **  
-[Single file] 
-python run_inference_selfattn_nii.py <input_nii_directory> <session_directory> <output_nii_directory>  
-[Batch mode]
-python batch_run_inference_selfattn_nii.py <input_nii_directory> <session_directory> <output_nii_directory> 
+**Apply self-attention model to NIfTI data**  
+* *Single file*
+```
+python run_inference_selfattn_nii.py <input_nii_file> <session_directory> <output_nii_directory>
+```
+* *Batch mode*
+```
+python batch_run_inference_selfattn_nii.py <input_nii_directory> <session_directory> <output_nii_directory>
+```
 
 ### All OARs   
-** To NIfTI data **  
-[Batch mode]
+**Apply to NIfTI data (batch mode)**  
+```
 python batch_run_inference_hn_oars_nii.py <input_nii_directory> <session_directory> <output_nii_directory>
-
-
 ```
   
 ## Citing this work
