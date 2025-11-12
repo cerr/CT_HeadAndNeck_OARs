@@ -16,9 +16,8 @@ from cerr.utils.ai_pipeline import getScanNumFromIdentifier
 from cerr.utils.image_proc import transformScan
 from cerr.utils.statistics import prctile, round
 
-import run_fuse_inference_chewing_nii
-import run_fuse_inference_constrictor_nii
-import run_fuse_inference_larynx_nii
+import run_fuse_inference_chewing_nii, run_fuse_inference_larynx_nii,\
+       run_fuse_inference_constrictor_nii
 
 
 def postProcessChew(mask3M):
@@ -122,22 +121,22 @@ def postProcessLar(mask3M):
 
 
 def postProcessCM(mask3M):
-    "Post-processing of AI segmentations of the constrictor"
+    """ Post-processing of AI segmentations of the constrictor """
 
     maskSiz = mask3M.shape[0]
     scale = 512 / maskSiz
 
     # Morphological closing element
     radius1 = int(np.floor(4 / scale))
-    radius2 = int(np.floor(2 / scale))
+    radius2 = 2
 
     # Smoothing filter dimensions
-    filtSize = np.floor(5 / scale)
+    filtSize = np.floor(3 / scale)
     filtSize = int(max(1, 2 * np.floor(filtSize // 2) - 1))  # Nearest odd value
 
     # Min size for connected components
-    minSizeIsland = np.floor(20 / scale ** 2)
-    minSizeCC = np.floor(50 / scale ** 2)
+    minSizeCC1 = np.floor(50 / scale ** 2)
+    minSizeCC2 = np.floor(20 / scale ** 2)
 
     procMask3M = mask3M
     slicesV = np.where(np.sum(np.sum(mask3M.astype(float), axis=0), axis=0) > 0)[0]
@@ -146,27 +145,23 @@ def postProcessCM(mask3M):
     # Fill holes and retain largest CC
     strElement = mask.createStructuringElement(radius1, [1, 1, 1], shape='sphere')
     fillMask3m = mask.morphologicalClosing(maskSlc3M, strElement)
-    fillMask3m = mask.largestConnComps(fillMask3m, 1,
-                                       minSize=minSizeCC, dim=3)
+    fillConnMask3m = mask.largestConnComps(fillMask3m, 1,
+                                           minSize=minSizeCC1, dim=3)
 
     # Fill holes and remove islands
-    strElement2 = mask.createStructuringElement(radius2, [1, 1, 1],
-                                           shape='disk')
-    for s in range(fillMask3m.shape[2]):
-        slcMask = fillMask3m[:, :, s]
+    strElement2 = mask.createStructuringElement(radius2, [1, 1, 1], shape='disk')
+    for s in range(fillConnMask3m.shape[2]):
+        slcMask = fillConnMask3m[:, :, s]
         labelM = mask.morphologicalClosing(slcMask, strElement2)
-
-        strMaskM = mask.largestConnComps(labelM, 1,
-                                         minSize=minSizeIsland, dim=2)
-        fillMask3m[:, :, s] = strMaskM
-
+        fillConnMask3m[:, :, s] = mask.largestConnComps(labelM, 1,
+                                             minSize=minSizeCC2, dim=2)
     # Smooth
     if fillMask3m.shape[2] > 1:
         filtRadius = int((filtSize-1)/2)
-        smoothedLabel3M = mask.blurring(fillMask3m, filtRadius, filtType='box')
-        fillMask3m = smoothedLabel3M > 0.5
+        smoothedLabel3M = mask.blurring(fillConnMask3m, filtRadius, filtType='box')
+        fillConnMask3m = smoothedLabel3M > 0.5
 
-    procMask3M[:, :, slicesV] = fillMask3m
+    procMask3M[:, :, slicesV] = fillConnMask3m
 
     return procMask3M
 
@@ -385,9 +380,24 @@ def preProcCM(planC, scanIndex, niiDir):
 
     return scanIndex, scanBounds, planC
 
+def writeToNIfTI(labelMap, fileName, inputImg):
+    """ Write mask to NIfTI file """
+    labelMapShift = np.moveaxis(labelMap, [2, 1, 0], [0, 2, 1])
+    labelMapShift = np.flip(labelMapShift, 0)
+    labelMapImg = sitk.GetImageFromArray(labelMapShift)
 
-def exportSegs(planC, scanIndex, scanBounds, modelName, segPath, outputDicomPath, ptID):
-    """Import NIfTI segmentation masks, apply post-processing, and export to DICOM """
+    # Copy information from input img
+    labelMapImg.CopyInformation(inputImg)
+
+    sitk.WriteImage(labelMapImg, fileName)
+
+    return 0
+
+
+def exportSegs(planC, scanIndex, scanBounds, modelName, ptID,
+               outType, segPath, outputPath, refImg):
+    """Import segmentation masks, apply post-processing, and export to desired format """
+
     if modelName == 'chew':
         strToLabelMap = {1: "Left masseter", 2: "Right masseter",
                          3: "Left medial pterygoid",
@@ -411,12 +421,14 @@ def exportSegs(planC, scanIndex, scanBounds, modelName, segPath, outputDicomPath
         outputMask4M = temp
 
     # Reverse transformations
+    numStructs = len(strToLabelMap)
+    labelMap3M = np.zeros(origSize)
     fullMask3M = np.full(origSize, fill_value=0)
     replaceStrNum = None
     procStrV = []
 
     for labelIdx in range(len(strToLabelMap)):
-        # Import mask to planC
+        # Undo pre-processing transformations
         strName = outputStrNames[labelIdx]
         outputMask = outputMask4M[:, :, :, labelIdx]
         fullMask3M[scanBounds[0]:scanBounds[1] + 1, \
@@ -427,52 +439,80 @@ def exportSegs(planC, scanIndex, scanBounds, modelName, segPath, outputDicomPath
         procmask3M = postProc(modelName, fullMask3M)
         planC = pc.importStructureMask(procmask3M, scanIndex,
                                        strName, planC, replaceStrNum)
+        labelMap3M[procmask3M == 1] = labelIdx + 1
+
         procStr = len(planC.structure) - 1
         procStrV.append(procStr)
 
-    # Export segmentations to DICOM
-    structFileName = ptID + '_' + modelName + '_AI_seg.dcm'
-    structFilePath = os.path.join(outputDicomPath, structFileName)
-    seriesDescription = "AI Generated"
-    exportOpts = {'seriesDescription': seriesDescription}
-    rtstruct_iod.create(procStrV, structFilePath, planC, exportOpts)
+    if outType == 'DCM':
+        # Export segmentations to DICOM
+        structFileName = ptID + '_' + modelName + '_AI_seg.dcm'
+        structFilePath = os.path.join(outputPath, structFileName)
+        seriesDescription = "AI Generated"
+        exportOpts = {'seriesDescription': seriesDescription}
+        rtstruct_iod.create(procStrV, structFilePath, planC, exportOpts)
+    elif outType == 'NII':
+        structFileName = ptID + '_' + modelName + '_AI_seg.nii.gz'
+        structFilePath = os.path.join(outputPath, structFileName)
+        writeToNIfTI(labelMap3M, structFilePath, refImg)
 
     return planC, structFilePath
 
 
-def main(inputPath, sessionpath, outputPath):
+def main(inputPath, sessionpath, outputPath, DCMexportFlag=False):
 
     # Create output and session dirs
     os.makedirs(sessionpath, exist_ok=True)
     os.makedirs(outputPath, exist_ok=True)
 
-    # Read DICOM image
-    ptID = Path(Path(inputPath).stem).stem
-    planC = pc.loadDcmDir(inputPath)
+    # Identify input type
+    dcmFlag = False
+    niiFlag = False
+    if os.path.isfile(inputPath) and \
+            (inputPath.endswith('.nii') or inputPath.endswith('.nii.gz')):
+        niiFlag = True
+    elif os.path.isdir(inputPath):
+        dcmFlag = True
+    else:
+        raise ValueError('Invalid input path ', inputPath)
+
+    # Run auto-seg
+    outType = 'DCM'
+    origImg = None
+    if dcmFlag:
+        # Read DICOM image
+        ptID = Path(Path(inputPath).stem).stem
+        planC = pc.loadDcmDir(inputPath)
+    elif niiFlag:
+        ptID = os.path.basename(inputPath)
+        planC = pc.loadNiiScan(inputPath, imageType="CT SCAN")
+        origImg = sitk.ReadImage(inputPath)
+        if not DCMexportFlag:
+            outType = 'NII'
 
     # Segment chewing structures
     modelName = 'chew'
     scanIndex, scanBounds, planC = preProcChew(planC, sessionpath)
     tempNiiPath = os.path.join(sessionpath, 'chew_out_nii')
     run_fuse_inference_chewing_nii.main(sessionpath, tempNiiPath)
-    planC, chewMaskPath = exportSegs(planC, scanIndex, scanBounds,
-                       modelName, tempNiiPath, outputPath, ptID)
+    planC, chewMaskPath = exportSegs(planC, scanIndex, scanBounds, modelName, ptID,
+                                     outType, tempNiiPath, outputPath, origImg)
 
     # Segment larynx
     modelName = 'larynx'
     scanIndex, scanBounds, planC = preProcLar(planC, scanIndex, sessionpath)
     tempNiiPath = os.path.join(sessionpath, 'larynx_out_nii')
     run_fuse_inference_larynx_nii.main(sessionpath, tempNiiPath)
-    planC, larynxMaskPath = exportSegs(planC, scanIndex, scanBounds, modelName,
-                       tempNiiPath, outputPath, ptID)
+    planC, larynxMaskPath = exportSegs(planC, scanIndex, scanBounds, modelName, ptID,
+                                       outType, tempNiiPath, outputPath, origImg)
 
     # Segment pharyngeal constrictor
     modelName = 'cm'
     scanIndex, scanBounds, planC = preProcCM(planC, scanIndex, sessionpath)
     tempNiiPath = os.path.join(sessionpath, 'cm_out_nii')
     run_fuse_inference_constrictor_nii.main(sessionpath, tempNiiPath)
-    planC, constrictorMaskPath = exportSegs(planC, scanIndex, scanBounds, modelName,
-                       tempNiiPath, outputPath, ptID)
+    planC, constrictorMaskPath = exportSegs(planC, scanIndex, scanBounds, modelName, ptID,
+                                            outType, tempNiiPath, outputPath, origImg)
 
     # Clear session dir
     shutil.rmtree(sessionpath)
