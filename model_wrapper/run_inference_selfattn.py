@@ -278,7 +278,8 @@ def main(input_path, session_path, output_path, DCMexportFlag=False):
         pt_id = Path(Path(input_path).stem).stem
         planC = pc.loadDcmDir(input_path)
     elif nii_flag:
-        pt_id = input_path.split('.')[0]
+        file_name = os.path.basename(input_path)
+        pt_id = file_name.split('.')[0]
         planC = pc.loadNiiScan(input_path, imageType="CT SCAN")
         orig_img = sitk.ReadImage(input_path)
         if not DCMexportFlag:
