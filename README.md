@@ -26,10 +26,10 @@ Segmented using self-attention U-net network [2] to delineate:
 
 ### Inputs
 The following input options are supported: 
-* DICOM (single CT): Input path to directory containing DICOM H&N CT images.
-* DICOM (cohort)   : Input path to hierarchical directory with sub-directories per patient holding DICOM H&N CT images.
-* NIfTI (single CT): Input path to NIfTI file containing H&N CT image.
-* NIfTI (cohort)   : Input path to flat directory of NIfTI H&N CT images per patient. 
+* **DICOM (single CT)**: Input path to directory containing DICOM H&N CT images.
+* **DICOM (cohort)**   : Input path to hierarchical directory with sub-directories per patient holding DICOM H&N CT images.
+* **NIfTI (single CT)**: Input path to NIfTI file containing H&N CT image.
+* **NIfTI (cohort)**   : Input path to flat directory of NIfTI H&N CT images per patient. 
 
 Input file format is inferred from the organization of data.
 
