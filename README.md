@@ -24,6 +24,15 @@ Segmented using self-attention U-net network [2] to delineate:
 
 ## Usage
 
+### Inputs
+The following input options are supported: 
+* DICOM (single CT): Input path to directory containing DICOM H&N CT images.
+* DICOM (cohort)   : Input path to hierarchical directory with sub-directories per patient holding DICOM H&N CT images.
+* NIfTI (single CT): Input path to NIfTI file containing H&N CT image.
+* NIfTI (cohort)   : Input path to flat directory of NIfTI H&N CT images per patient. 
+
+Input file format is inferred from the organization of data.
+
 ### Demo
 See [Jupyter notebook](https://github.com/cerr/pyCERR-Notebooks/blob/main/autosegment_CT_HeadAndNeck_OARs.ipynb) for sample workflow. 
 
@@ -54,38 +63,15 @@ pip install -r requirements.txt
   
 ## Running pre-trained models  
 
-### OAR group-1:
+### Single CT 
 
-**Option-1: Apply DeeplabV3+ models to DICOM data**
 ```
-python run_inference_deeplab.py <input_dicom_directory> <session_directory> <output_dicom_directory>
-```
-
-**Option-2: Apply DeeplabV3+ models to NIfTI data**  
-* *Single file* 
-```
-python run_inference_deeplab_nii.py <input_nii_file> <session_directory> <output_nii_directory>
-```
-* *Batch mode*
-```
-python batch_run_inference_deeplab_nii.py <input_nii_directory> <session_directory> <output_nii_directory>
+python run_inference_hn_oars.py <input_path> <session_path> <output_path>
 ```
 
-### OAR group-2  
-**Apply self-attention model to NIfTI data**  
-* *Single file*
+### CT cohort   
 ```
-python run_inference_selfattn_nii.py <input_nii_file> <session_directory> <output_nii_directory>
-```
-* *Batch mode*
-```
-python batch_run_inference_selfattn_nii.py <input_nii_directory> <session_directory> <output_nii_directory>
-```
-
-### All OARs   
-**Apply to NIfTI data (batch mode)**  
-```
-python batch_run_inference_hn_oars_nii.py <input_nii_directory> <session_directory> <output_nii_directory>
+python batch_run_inference_hn_oars.py <input_path> <session_path> <output_path>
 ```
   
 ## Citing this work
