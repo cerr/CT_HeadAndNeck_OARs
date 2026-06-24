@@ -1,0 +1,2 @@
+python_version=3.8
+uv_flags=--find-links https://download.pytorch.org/whl/torch_stable.html

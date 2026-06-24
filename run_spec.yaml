@@ -1,0 +1,34 @@
+# run_spec.yaml 
+metadata:
+        model_name: "CT_HeadAndNeck_OARs"
+        version: "1.0.0"  
+execution:   
+        single:     
+                description: "Run inference on a single scan."
+                entrypoint: "run_inference_hn_oars.py"     
+                arguments:       
+                        # Positional arguments (in order)
+                        - name: "input_path"
+                          type: "positional"
+                          required: true
+                        - name: "session_path"
+                          type: "positional"
+                          required: true
+                        - name: "output_path"
+                          type: "positional"
+                          required: true
+                        # Optional flag arguments (order doesn't matter)
+        batch:
+                description: "Run inference on a cohort."
+                entrypoint: "batch_run_inference_hn_oars.py"
+                arguments:
+                        # Positional arguments (in order)
+                        - name: "input_path"
+                          type: "positional"
+                          required: true
+                        - name: "session_path"
+                          type: "positional"
+                          required: true
+                        - name: "output_path"
+                          type: "positional"
+                          required: true
