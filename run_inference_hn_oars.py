@@ -1,8 +1,6 @@
 import sys
 import os
-from model_wrapper import run_inference_deeplab_dcm, run_inference_selfattn_dcm, run_inference_selfattn_nii, \
-    run_inference_deeplab_nii
-
+from model_wrapper import run_inference_deeplab, run_inference_selfattn
 
 def main(inputPath, sessionPath, outputPath):
 
@@ -12,20 +10,16 @@ def main(inputPath, sessionPath, outputPath):
     # Identify input type
     if os.path.isfile(inputPath) and \
             (inputPath.endswith('.nii') or inputPath.endswith('.nii.gz')):
-        niiFlag = True
+        dcmFlag = False #NIfTI
     elif os.path.isdir(inputPath):
         dcmFlag = True
     else:
         raise ValueError('Invalid input path ', inputPath)
 
-    # Run batch auto-seg
-    if dcmFlag:
-        run_inference_hn_oars_dcm.main(inputPath, sessionPath, outputPath)
-
-    elif niiFlag:
-        run_inference_deeplab_nii.main(inputPath, sessionPath, outputPath)
-        run_inference_selfattn_nii.main(inputPath, sessionPath, outputPath)
-
+    # Run auto-seg
+    run_inference_deeplab.main(inputPath, sessionPath, outputPath, DCMexportFlag=dcmFlag)
+    run_inference_selfattn.main(inputPath, sessionPath, outputPath, DCMexportFlag=dcmFlag)
+    
     return 0
 
 

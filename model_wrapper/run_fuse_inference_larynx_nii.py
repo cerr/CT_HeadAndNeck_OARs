@@ -10,8 +10,8 @@
 import gzip, sys
 from time import process_time
 
-from dataloaders.custom_dataset import *
-from modeling.deeplab import *
+from .dataloaders.custom_dataset import *
+from .modeling.deeplab import *
 from skimage.transform import resize
 from torch.utils.data import DataLoader
 from tqdm import tqdm

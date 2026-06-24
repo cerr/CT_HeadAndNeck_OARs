@@ -1,6 +1,5 @@
 import torch.utils.data
-from data.base_data_loader import BaseDataLoader
-
+from model_wrapper.data.base_data_loader import BaseDataLoader
 
 def CreateDataset(opt):
     dataset = None

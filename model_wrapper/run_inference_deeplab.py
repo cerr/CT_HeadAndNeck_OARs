@@ -16,9 +16,8 @@ from cerr.utils.ai_pipeline import getScanNumFromIdentifier
 from cerr.utils.image_proc import transformScan
 from cerr.utils.statistics import prctile, round
 
-import run_fuse_inference_chewing_nii, run_fuse_inference_larynx_nii,\
-       run_fuse_inference_constrictor_nii
-
+from . import run_fuse_inference_chewing_nii, \
+    run_fuse_inference_larynx_nii, run_fuse_inference_constrictor_nii
 
 def postProcessChew(mask3M):
     "Post-processing of AI segmentations of chewing structures"

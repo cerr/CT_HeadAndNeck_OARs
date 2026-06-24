@@ -1,8 +1,7 @@
 import argparse
 import os
-from util import util
 import torch
-
+from model_wrapper.util import util
 
 class BaseOptions():
     def __init__(self):

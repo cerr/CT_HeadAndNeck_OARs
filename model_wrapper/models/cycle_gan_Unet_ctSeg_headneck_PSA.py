@@ -4,8 +4,8 @@ import os
 from collections import OrderedDict
 from torch.autograd import Variable
 import itertools
-import util.util as util
-from util.image_pool import ImagePool
+import model_wrapper.util.util as util
+from model_wrapper.util.image_pool import ImagePool
 from .base_model import BaseModel
 from . import networks
 import sys

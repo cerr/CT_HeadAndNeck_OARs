@@ -11,7 +11,7 @@ import h5py
 from torch.utils import data
 from torchvision import transforms
 from skimage.transform import resize
-from dataloaders import custom_transforms as tr
+from .dataloaders import custom_transforms as tr
 import SimpleITK as sitk
 
 class struct(data.Dataset):

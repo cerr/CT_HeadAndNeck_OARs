@@ -2,10 +2,9 @@ import os.path
 import random
 import torchvision.transforms as transforms
 import torch
-from data.base_dataset import BaseDataset
-from data.image_folder import make_dataset
 from PIL import Image
-
+from model_wrapper.data.base_dataset import BaseDataset, get_transform
+from model_wrapper.data.image_folder import make_dataset
 
 class AlignedDataset(BaseDataset):
     def initialize(self, opt):

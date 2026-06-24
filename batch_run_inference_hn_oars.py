@@ -2,8 +2,20 @@ import sys
 import os
 from pathlib import Path
 
-import run_inference_deeplab
-import run_inference_selfattn
+from model_wrapper import run_inference_deeplab, run_inference_selfattn
+
+def _is_dicom_dir(path):
+    """Check if a directory contains DICOM files (.dcm)."""
+    if not os.path.isdir(path):
+        return False
+    return any(f.lower().endswith('.dcm') for f in os.listdir(path))
+
+
+def _is_nii_file(path):
+    """Check if a file is a NIfTI file (.nii or .nii.gz)."""
+    return os.path.isfile(path) and \
+           (path.endswith('.nii') or path.endswith('.nii.gz'))
+
 
 def main(inputPath, sessionPath, outputPath):
 
@@ -17,8 +29,14 @@ def main(inputPath, sessionPath, outputPath):
         return
 
     # Identify input type
-    dcmFlag = all(os.path.isdir(f) for f in contents)
-    niiFlag = all(os.path.isfile(f) for f in contents)
+    dcmFlag = all(os.path.isdir(f) and _is_dicom_dir(f) for f in contents)
+    niiFlag = all(_is_nii_file(f) for f in contents)
+
+    if not dcm_flag and not nii_flag:
+        raise ValueError(
+            "Input directory must contain either subdirectories of DICOM files "
+            "or a flat list of NIfTI (.nii / .nii.gz) files."
+        )
 
     # Run batch auto-seg
     if dcmFlag:
@@ -29,8 +47,8 @@ def main(inputPath, sessionPath, outputPath):
             print('Segmenting dataset {} of {}'.format(count, len(contents)))
             ptID = Path(Path(ptDir).stem).stem
             ptSessionDir = os.path.join(sessionPath, ptID)
-            run_inference_deeplab.main(ptDir, ptSessionDir, outputPath)
-            run_inference_selfattn.main(ptDir, ptSessionDir, outputPath)
+            run_inference_deeplab.main(ptDir, ptSessionDir, outputPath, DCMexportFlag=True)
+            run_inference_selfattn.main(ptDir, ptSessionDir, outputPath, DCMexportFlag=True)
 
     elif niiFlag:
         fileList = os.listdir(inputPath)
@@ -41,8 +59,8 @@ def main(inputPath, sessionPath, outputPath):
             ptID = os.path.basename(inputPath)
             filePath = os.path.join(inputPath, fileName)
             ptSessionDir = os.path.join(sessionPath, ptID)
-            run_inference_deeplab.main(filePath, ptSessionDir, outputPath)
-            run_inference_selfattn.main(filePath, ptSessionDir, outputPath)
+            run_inference_deeplab.main(filePath, ptSessionDir, outputPath, DCMexportFlag=False)
+            run_inference_selfattn.main(filePath, ptSessionDir, outputPath, DCMexportFlag=False)
 
     return 0
 

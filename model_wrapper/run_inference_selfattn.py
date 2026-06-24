@@ -17,8 +17,8 @@ from cerr.utils.ai_pipeline import getScanNumFromIdentifier
 from cerr.utils.image_proc import resizeScanAndMask
 from cerr.utils.mask import computeBoundingBox, getPatientOutline
 
-from models.models import create_model
-from options.train_options import TrainOptions
+from model_wrapper.models.models import create_model
+from model_wrapper.options.train_options import TrainOptions
 
 # Input image dimensions
 input_size = 256
