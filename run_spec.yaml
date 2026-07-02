@@ -2,6 +2,25 @@
 metadata:
         model_name: "CT_HeadAndNeck_OARs"
         version: "1.0.0"  
+outputs:
+    "*_chew_AI_seg.nii.gz":
+        1: "Left masseter"
+        2: "Right masseter"
+        3: "Left medial pterygoid"
+        4: "Right medial pterygoid"
+    "*_larynx_AI_seg.nii.gz":
+        1: "Larynx"
+    "*_cm_AI_seg.nii.gz":
+        1: "Pharyngeal constrictor"
+    "*_self_attn_AI_seg.nii.gz":
+        1: "Left Parotid"
+        2: "Right Parotid"
+        3: "Left Submandible"
+        4: "Right Submandible"
+        7: "Mandible"
+        8: "Spinal cord"
+        9: "Brain stem"
+        10: "Oral cavity"
 execution:   
         single:     
                 description: "Run inference on a single scan."
