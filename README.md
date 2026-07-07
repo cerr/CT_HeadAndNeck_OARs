@@ -15,8 +15,8 @@ Segmented using DeepLabV3+ model ensembles [1] for sequential localization to de
 Segmented using self-attention U-net network [2] to delineate:    
 * Left parotid    
 * Right parotid    
-* Left submandibular gland  
-* Right submandibular gland  
+* Left submandible
+* Right submandible 
 * Mandible    
 * Spinal cord    
 * Brain stem    
@@ -26,12 +26,12 @@ Segmented using self-attention U-net network [2] to delineate:
 
 ### Inputs
 The following input options are supported: 
-* **DICOM (single CT)**: Input path to directory containing DICOM H&N CT images.
-* **DICOM (cohort)**   : Input path to hierarchical directory with sub-directories per patient holding DICOM H&N CT images.
-* **NIfTI (single CT)**: Input path to NIfTI file containing H&N CT image.
-* **NIfTI (cohort)**   : Input path to flat directory of NIfTI H&N CT images per patient. 
+* **DICOM (single CT)**: Path to flat directory containing DICOM images for a single patient.
+* **DICOM (cohort)**   : Path to directory containing sub-directories, one per patient, containing DICOM images.
+* **NIfTI (single CT)**: Path to NIfTI image for a single patient.
+* **NIfTI (cohort)**   : Path to flat directory of NIfTI images, one per patient. 
 
-Input file format is inferred from the organization of data.
+The input file-format is inferred from the organization of data.
 
 ### Demo
 See [Jupyter notebook](https://github.com/cerr/pyCERR-Notebooks/blob/main/autosegment_CT_HeadAndNeck_OARs.ipynb) for sample workflow. 
@@ -63,12 +63,7 @@ pip install -r requirements.txt
   
 ## Running pre-trained models  
 
-### Single CT 
-
 ```
-python run_inference_hn_oars.py <input_path> <session_path> <output_path>
-```
-
 ### CT cohort   
 ```
 python batch_run_inference_hn_oars.py <input_path> <session_path> <output_path>
