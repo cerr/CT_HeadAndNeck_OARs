@@ -32,7 +32,7 @@ pywavelets==1.4.1
 requests==2.32.3
 scikit-image==0.21.0
 scipy==1.10.1
-simpleitk==2.0.2
+simpleitk==2.1.1
 six==1.17.0
 soupsieve==2.7
 surface-distance @ git+https://github.com/google-deepmind/surface-distance@1f805cea446805e559badc80dd27f34175e4173d
