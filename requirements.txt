@@ -11,6 +11,7 @@ h5py==3.11.0
 idna==3.10
 imageio==2.35.1
 importlib-resources==6.4.5
+joblib==1.3.2 
 jsonpatch==1.33
 jsonpointer==3.0.0
 keras==2.13.1
@@ -23,7 +24,7 @@ numpy==1.24.3
 packaging==25.0
 pandas==2.0.3
 pillow==10.4.0
-pycerr @ git+https://github.com/cerr/pyCERR.git@f0a39556daca7fc2d7ca9a51245a16cc3ebaf179
+pycerr @ git+https://github.com/cerr/pyCERR.git@3e296496ff863cbf6fdd2e55608de9aab1e27bbb
 pydicom==2.4.4
 pyparsing==3.1.4
 python-dateutil==2.9.0.post0
@@ -31,11 +32,13 @@ pytz==2024.2
 pywavelets==1.4.1
 requests==2.32.3
 scikit-image==0.21.0
+scikit-learn==1.3.2
 scipy==1.10.1
 simpleitk==2.0.2
 six==1.17.0
 soupsieve==2.7
 surface-distance @ git+https://github.com/google-deepmind/surface-distance@1f805cea446805e559badc80dd27f34175e4173d
+threadpoolctl==3.2.0
 tifffile==2023.7.10
 torch==1.5.0+cu92
 torchvision==0.6.0+cu92
