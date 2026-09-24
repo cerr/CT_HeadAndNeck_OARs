@@ -71,7 +71,7 @@ def main(inputPath, sessionPath, outputPath):
     for count, item in enumerate(items, 1):
         print(f"Segmenting item {count} of {total}: {item}")
         if inputType == 'batch_dcm':
-            ptID = Path(item).stem
+            ptID = _get_img_ext(item)
             ptSessionDir = os.path.join(sessionPath, ptID)
             run_inference_deeplab.main(item, ptSessionDir, outputPath,
                                        DCMexportFlag=True)
@@ -79,7 +79,7 @@ def main(inputPath, sessionPath, outputPath):
                                         DCMexportFlag=True)
  
         elif inputType == 'single_dcm':
-            ptID = Path(item).stem
+            ptID = _get_img_ext(item)
             ptSessionDir = os.path.join(sessionPath, ptID)
             run_inference_deeplab.main(item, ptSessionDir, outputPath,
                                        DCMexportFlag=True)
@@ -87,7 +87,7 @@ def main(inputPath, sessionPath, outputPath):
                                         DCMexportFlag=True)
  
         elif inputType in ('batch_nii', 'single_nii'):
-            ptID = Path(item).stem.replace('.nii', '')
+            ptID = _get_img_ext(item).replace('.nii', '')
             ptSessionDir = os.path.join(sessionPath, ptID)
             run_inference_deeplab.main(item, ptSessionDir, outputPath,
                                        DCMexportFlag=False)

@@ -58,7 +58,7 @@ def load_input(input_path):
     elif _is_nii_dir(input_path):
         scan_file, struct_files = _identify_scan_and_labels(input_path)
     elif _is_dicom_dir(input_path):
-        pt_id = Path(Path(input_path).stem).stem
+        pt_id = _get_img_ext(input_path)
         planC = pc.loadDcmDir(input_path)
         orig_img = None
         is_dcm = True
@@ -66,12 +66,6 @@ def load_input(input_path):
     else:
         raise ValueError('Invalid input path ', input_path)
 
-    planC = pc.loadNiiScan(scan_file, imageType="CT SCAN")
-    for struct_file in struct_files:
-        name = _get_img_ext(struct_file)
-        is_binary = len(np.unique(sitk.GetArrayViewFromImage(
-            sitk.ReadImage(struct_file)))) <= 2
-        labels = {name: 1} if is_binary else {}   # always pass a fresh dict
-        planC = pc.loadNiiStructure(struct_file, 0, planC, labels)
+    planC = _load_nii_data(scan_file, struct_files)
 
     return planC, _get_img_ext(input_path), sitk.ReadImage(scan_file), False
