@@ -191,7 +191,6 @@ def postproc_and_import_seg(label_map, scan_list, planC, out_slices, resize_grid
 
     return planC, proc_str_list, label_map_out
 
-
 def label_to_bin(label_map):
     """Convert label map to binary mask stack"""
     label_siz = np.shape(label_map)
@@ -203,6 +202,12 @@ def label_to_bin(label_map):
 
     return bin_mask
 
+def load_file(file_name):
+    """ Read NIfTI image """
+    input_img = sitk.ReadImage(file_name)
+    scan = np.array(sitk.GetArrayFromImage(input_img))
+    scan = np.moveaxis(scan, 0, -1)
+    return scan, input_img
 
 def write_file(mask, out_file, input_img):
     """ Write mask to NIfTI file """
