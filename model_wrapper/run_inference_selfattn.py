@@ -35,24 +35,6 @@ output_str_names = list(label_dict.values())
 
 model_arch = 'self_attn'
 
-def find(pattern, path):
-    """look for NIfTI files in the given directory"""
-    result = []
-    for root, dirs, files in os.walk(path):
-        for name in files:
-            if fnmatch.fnmatch(name, pattern):
-                result.append(os.path.join(root, name))
-    return result
-
-
-def load_file(file_name):
-    """ Read NIfTI image """
-    input_img = sitk.ReadImage(file_name)
-    scan = np.array(sitk.GetArrayFromImage(input_img))
-    scan = np.moveaxis(scan, 0, -1)
-    return scan, input_img
-
-
 def process_image(planC):
     """Image pre-processing using pyCERR"""
 
@@ -260,20 +242,9 @@ def main(input_path, session_path, output_path, DCMexportFlag=False):
     os.makedirs(model_in_path, exist_ok=True)
     os.makedirs(model_out_path, exist_ok=True)
 
-    # Identify input type
-    dcm_flag = False
-    nii_flag = False
-    if os.path.isfile(input_path) and \
-            (input_path.endswith('.nii') or input_path.endswith('.nii.gz')):
-        nii_flag = True
-    elif os.path.isdir(input_path):
-        dcm_flag = True
-    else:
-        raise ValueError('Invalid input path ', input_path)
-
     # Identify input format and import data to planC
-    planC, ptID, origImg, isDcm = load_input(input_path)
-    outType = 'DCM' if (isDcm or DCMexportFlag) else 'NII'
+    planC, pt_id, orig_img, is_dcm = load_input(input_path)
+    out_type = 'DCM' if (is_dcm or DCMexportFlag) else 'NII'
 
     train_opt = TrainOptions().parse() 
 
