@@ -16,8 +16,10 @@ from cerr.utils.ai_pipeline import getScanNumFromIdentifier
 from cerr.utils.image_proc import transformScan
 from cerr.utils.statistics import prctile, round
 
+from .proc_input import load_input
 from . import run_fuse_inference_chewing_nii, \
     run_fuse_inference_larynx_nii, run_fuse_inference_constrictor_nii
+
 
 def postProcessChew(mask3M):
     "Post-processing of AI segmentations of chewing structures"
@@ -464,31 +466,9 @@ def main(inputPath, sessionpath, outputPath, DCMexportFlag=False):
     os.makedirs(sessionpath, exist_ok=True)
     os.makedirs(outputPath, exist_ok=True)
 
-    # Identify input type
-    dcmFlag = False
-    niiFlag = False
-    if os.path.isfile(inputPath) and \
-            (inputPath.endswith('.nii') or inputPath.endswith('.nii.gz')):
-        niiFlag = True
-    elif os.path.isdir(inputPath):
-        dcmFlag = True
-    else:
-        raise ValueError('Invalid input path ', inputPath)
-
-    # Run auto-seg
-    outType = 'DCM'
-    origImg = None
-    if dcmFlag:
-        # Read DICOM image
-        ptID = Path(Path(inputPath).stem).stem
-        planC = pc.loadDcmDir(inputPath)
-    elif niiFlag:
-        fileName = os.path.basename(inputPath)
-        ptID = fileName.split('.')[0]
-        planC = pc.loadNiiScan(inputPath, imageType="CT SCAN")
-        origImg = sitk.ReadImage(inputPath)
-        if not DCMexportFlag:
-            outType = 'NII'
+    # Identify input format and import data to planC
+    planC, ptID, origImg, isDcm = load_input(inputPath)
+    outType = 'DCM' if (isDcm or DCMexportFlag) else 'NII'
 
     # Segment chewing structures
     modelName = 'chew'

@@ -1,22 +1,11 @@
 import sys
 import os
+
 from pathlib import Path
 
 from model_wrapper import run_inference_deeplab, run_inference_selfattn
+from model_wrapper.proc_input import _is_nii_file, _is_nii_dir, _is_dicom_dir, _get_img_ext
 
-def _is_dicom_dir(path):
-    """Check if a directory contains DICOM files (.dcm)."""
-    if not os.path.isdir(path):
-        return False
-    return any(f.lower().endswith('.dcm') for f in os.listdir(path))
-
-
-def _is_nii_file(path):
-    """Check if a file is a NIfTI file (.nii or .nii.gz)."""
-    return os.path.isfile(path) and \
-           (path.endswith('.nii') or path.endswith('.nii.gz'))
-
- 
 def _detect_input_scenario(input_path):
     """Detect input type (single/batch, DICOM/NIfTI) from directory contents.
  
@@ -31,36 +20,42 @@ def _detect_input_scenario(input_path):
     if not contents:
         raise ValueError(f"Input directory is empty: {input_path}")
  
-    subdirs = [f for f in contents if os.path.isdir(f)]
+    dcm_dirs = [f for f in contents if _is_dicom_dir(f)]
+    nii_dirs = [f for f in contents if not _is_dicom_dir(f) and _is_nii_dir(f)]
     nii_files = [f for f in contents if _is_nii_file(f)]
     dcm_files = [f for f in contents if
                  os.path.isfile(f) and f.lower().endswith('.dcm')]
- 
-    # DICOM (batch)
-    if subdirs and all(_is_dicom_dir(d) for d in subdirs) and not nii_files:
-        return 'batch_dcm', subdirs
- 
-    # NIfTI files 
-    if nii_files and not dcm_files and not subdirs:
+
+    ignore_files = [f for f in contents if f not in dcm_dirs + nii_dirs + nii_files + dcm_files]
+
+    # Batch
+    # DICOM
+    if dcm_dirs and not nii_dirs and not nii_files and not dcm_files:
+        return 'batch_dcm', dcm_dirs
+    # NIFTI
+    if nii_dirs and not dcm_dirs and not nii_files and not dcm_files:
+        return 'batch_nii', nii_dirs 
+
+    # Flat dir of NIfTI files 
+    if nii_files and not dcm_files and not dcm_dirs and not nii_dirs:
         if len(nii_files) == 1:
             return 'single_nii', nii_files
         return 'batch_nii', nii_files
  
     # DICOM (single)
-    if dcm_files and not nii_files and not subdirs:
+    if dcm_files and not nii_files and not dcm_dirs and not nii_dirs:
         return 'single_dcm', [input_path]
  
     raise ValueError(
         f"Unrecognised input directory structure in: {input_path}.\n"
         f"Expected one of:\n"
         f"  1. Subdirectories each containing DICOM files (batch DICOM)\n"
-        f"  2. Flat directory with multiple NIfTI files (batch NIfTI)\n"
-        f"  3. Flat directory with DICOM files directly (single DICOM)\n"
-        f"  4. Flat directory with a single NIfTI file (single NIfTI)"
+        f"  2. Subdirectories each containing NIfTI files (batch NIfTI)\n"
+        f"  3. Flat directory with multiple NIfTI files (batch NIfTI)\n"
+        f"  4. Flat directory with DICOM files directly (single DICOM)\n"
+        f"  5. Flat directory with a single NIfTI file (single NIfTI)"
     )
  
-
-
 
 def main(inputPath, sessionPath, outputPath):
 

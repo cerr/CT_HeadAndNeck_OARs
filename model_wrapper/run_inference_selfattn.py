@@ -17,6 +17,7 @@ from cerr.utils.ai_pipeline import getScanNumFromIdentifier
 from cerr.utils.image_proc import resizeScanAndMask
 from cerr.utils.mask import computeBoundingBox, getPatientOutline
 
+from .proc_input import load_input
 from model_wrapper.models.models import create_model
 from model_wrapper.options.train_options import TrainOptions
 
@@ -270,21 +271,9 @@ def main(input_path, session_path, output_path, DCMexportFlag=False):
     else:
         raise ValueError('Invalid input path ', input_path)
 
-    # Run auto-seg
-    out_type = 'DCM'
-    orig_img = None
-    if dcm_flag:
-        # Read DICOM image
-        pt_id = Path(Path(input_path).stem).stem
-        planC = pc.loadDcmDir(input_path)
-    elif nii_flag:
-        file_name = os.path.basename(input_path)
-        pt_id = file_name.split('.')[0]
-        planC = pc.loadNiiScan(input_path, imageType="CT SCAN")
-        orig_img = sitk.ReadImage(input_path)
-        if not DCMexportFlag:
-            out_type = 'NII'
-
+    # Identify input format and import data to planC
+    planC, ptID, origImg, isDcm = load_input(input_path)
+    outType = 'DCM' if (isDcm or DCMexportFlag) else 'NII'
 
     train_opt = TrainOptions().parse() 
 
