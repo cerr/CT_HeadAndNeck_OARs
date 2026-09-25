@@ -31,7 +31,7 @@ def _is_nii_file(path):
            path.lower().endswith(IMG_EXTS)
 
 def _is_nii_mask(path):
-    arr = sitk.getArrayViewFromImage(sitk.ReadImage(path))
+    arr = sitk.GetArrayViewFromImage(sitk.ReadImage(path))
     return len(np.unique(arr)) <= MAX_LABELS
 
 def _load_nii_data(scan_file, struct_files):
