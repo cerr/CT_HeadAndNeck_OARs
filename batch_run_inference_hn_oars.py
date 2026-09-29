@@ -67,33 +67,37 @@ def main(inputPath, sessionPath, outputPath):
     contents = [os.path.join(inputPath, f) for f in os.listdir(inputPath)]
 
     # Run batch auto-seg
+    errorLog = os.path.join(outputPath, 'errors.log')
     total = len(items)
     for count, item in enumerate(items, 1):
         print(f"Segmenting item {count} of {total}: {item}")
-        if inputType == 'batch_dcm':
-            ptID = _get_img_ext(item)
-            ptSessionDir = os.path.join(sessionPath, ptID)
-            run_inference_deeplab.main(item, ptSessionDir, outputPath,
-                                       DCMexportFlag=True)
-            run_inference_selfattn.main(item, ptSessionDir, outputPath,
-                                        DCMexportFlag=True)
- 
-        elif inputType == 'single_dcm':
-            ptID = _get_img_ext(item)
-            ptSessionDir = os.path.join(sessionPath, ptID)
-            run_inference_deeplab.main(item, ptSessionDir, outputPath,
-                                       DCMexportFlag=True)
-            run_inference_selfattn.main(item, ptSessionDir, outputPath,
-                                        DCMexportFlag=True)
- 
-        elif inputType in ('batch_nii', 'single_nii'):
-            ptID = _get_img_ext(item).replace('.nii', '')
-            ptSessionDir = os.path.join(sessionPath, ptID)
-            run_inference_deeplab.main(item, ptSessionDir, outputPath,
-                                       DCMexportFlag=False)
-            run_inference_selfattn.main(item, ptSessionDir, outputPath,
-                                        DCMexportFlag=False)
- 
+        try:
+            if inputType == 'batch_dcm':
+                ptID = _get_img_ext(item)
+                ptSessionDir = os.path.join(sessionPath, ptID)
+                run_inference_deeplab.main(item, ptSessionDir, outputPath,
+                                           DCMexportFlag=True)
+                run_inference_selfattn.main(item, ptSessionDir, outputPath,
+                                            DCMexportFlag=True)
+
+            elif inputType == 'single_dcm':
+                ptID = _get_img_ext(item)
+                ptSessionDir = os.path.join(sessionPath, ptID)
+                run_inference_deeplab.main(item, ptSessionDir, outputPath,
+                                           DCMexportFlag=True)
+                run_inference_selfattn.main(item, ptSessionDir, outputPath,
+                                            DCMexportFlag=True)
+
+            elif inputType in ('batch_nii', 'single_nii'):
+                ptID = _get_img_ext(item).replace('.nii', '')
+                ptSessionDir = os.path.join(sessionPath, ptID)
+                run_inference_deeplab.main(item, ptSessionDir, outputPath,
+                                           DCMexportFlag=False)
+                run_inference_selfattn.main(item, ptSessionDir, outputPath,
+                                            DCMexportFlag=False)
+        except Exception:
+            with open(errorLog, 'a') as f:
+                f.write(f"Item {str(item)} failed with {traceback.format_exc()}\n")
 
     return 0
 
