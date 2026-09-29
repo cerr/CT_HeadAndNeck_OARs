@@ -16,6 +16,8 @@ from skimage.transform import resize
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
+N_CLASS=2
+
 def labelToBin(labelMap, numStructs):
     """Convert label map to binary mask stack"""
     labelSiz = np.shape(labelMap)
@@ -39,11 +41,11 @@ def writeFile(mask, dirName, inputImg):
 
 
 class Larynx(object):
-    def __init__(self, inputDir, view):
+    def __init__(self, inputDir, view, model=None):
 
         self.inputDir = inputDir
         self.view = view
-        self.nClass = 2
+        self.nClass = N_CLASS
         self.cropSize = 321
         self.batchSize = 1
 
@@ -75,14 +77,17 @@ class Larynx(object):
                                      shuffle=False, drop_last=False, **kwargs)
 
         # Define network
-        print('Loading network...')
-        t0 = process_time()
-        self.model = DeepLab(num_classes=self.nClass,
+        if model is None:
+            print('Loading network...')
+            t0 = process_time()
+            self.model = DeepLab(num_classes=self.nClass,
                              backbone='resnet',
                              output_stride=16,
                              sync_bn=False,
                              freeze_bn=False)
-        print("%.1f" %(process_time() - t0) + ' s')
+            print("%.1f" %(process_time() - t0) + ' s')
+        else:
+            self.model = model
 
         # Using CUDA
         print('Loading model weights...')
@@ -167,21 +172,27 @@ def main(inputPath, outputPath):
 
     # Get probability maps from different views
     print('Beginning inference...')
+    sharedNw = DeepLab(num_classes=N_CLASS,
+                             backbone='resnet',
+                             output_stride=16,
+                             sync_bn=False,
+                             freeze_bn=False)
+    
     t0 = process_time()
-    larynxAx = Larynx(inputPath, 'axial')
+    larynxAx = Larynx(inputPath, 'axial', model=sharedNw)
     probMapAx, fName = larynxAx.segment()
     nClass = larynxAx.nClass
     print("%.1f" % (process_time() - t0) + ' s')
 
 
     t1 = process_time()
-    larynxSag = Larynx(inputPath, 'sagittal')
+    larynxSag = Larynx(inputPath, 'sagittal', model=sharedNw)
     probMapSag, __ = larynxSag.segment()
     print("%.1f" % (process_time() - t1) + ' s')
 
 
     t2 = process_time()
-    larynxCor = Larynx(inputPath, 'coronal')
+    larynxCor = Larynx(inputPath, 'coronal', model=sharedNw)
     probMapCor, __ = larynxCor.segment()
     print("%.1f" % (process_time() - t2) + ' s')
 

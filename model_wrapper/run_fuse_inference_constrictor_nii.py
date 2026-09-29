@@ -17,6 +17,7 @@ from skimage.transform import resize
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
+N_CLASS=2
 
 def labelToBin(labelMap, numStructs):
     """Convert label map to binary mask stack"""
@@ -45,7 +46,7 @@ class Constrictor(object):
 
         self.inputDir = inputDir
         self.view = view
-        self.nClass = 2
+        self.nClass = N_CLASS
         self.cropSize = 321
         self.batchSize = 1
 
@@ -77,14 +78,17 @@ class Constrictor(object):
                                      shuffle=False, drop_last=False, **kwargs)
 
         # Define network
-        print('Loading network...')
-        t0 = process_time()
-        self.model = DeepLab(num_classes=self.nClass,
+        if model is None:
+            print('Loading network...')
+            t0 = process_time()
+            self.model = DeepLab(num_classes=self.nClass,
                              backbone='resnet',
                              output_stride=16,
                              sync_bn=False,
                              freeze_bn=False)
-        print("%.1f" % (process_time() - t0) + ' s')
+            print("%.1f" % (process_time() - t0) + ' s')
+        else:
+            self.model=model
 
         # Using CUDA
         print('Loading model weights...')
@@ -169,21 +173,27 @@ def main(inputPath, outputPath):
 
     # Get probability maps from different views
     print('Beginning inference...')
+    sharedNw = self.model = DeepLab(num_classes=self.nClass,
+                             backbone='resnet',
+                             output_stride=16,
+                             sync_bn=False,
+                             freeze_bn=False)
+    
     t0 = process_time()
-    constrictorAx = Constrictor(inputPath, 'axial')
+    constrictorAx = Constrictor(inputPath, 'axial', model=sharedNw)
     probMapAx, fName = constrictorAx.segment()
     nClass = constrictorAx.nClass
     print("%.1f" % (process_time() - t0) + ' s')
 
 
     t1 = process_time()
-    constrictorSag = Constrictor(inputPath, 'sagittal')
+    constrictorSag = Constrictor(inputPath, 'sagittal', model=sharedNw)
     probMapSag, __ = constrictorSag.segment()
     print("%.1f" % (process_time() - t1) + ' s')
 
 
     t2 = process_time()
-    constrictorCor = Constrictor(inputPath, 'coronal')
+    constrictorCor = Constrictor(inputPath, 'coronal', model=sharedNw)
     probMapCor, __ = constrictorCor.segment()
     print("%.1f" % (process_time() - t2) + ' s')
 

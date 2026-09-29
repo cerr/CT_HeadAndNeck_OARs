@@ -31,14 +31,14 @@ def _is_nii_file(path):
            path.lower().endswith(IMG_EXTS)
 
 def _is_nii_mask(path):
-    arr = sitk.GetArrayViewFromImage(sitk.ReadImage(path))
+    arr = sitk.GetArrayFromImage(sitk.ReadImage(path))
     return len(np.unique(arr)) <= MAX_LABELS
 
 def _load_nii_data(scan_file, struct_files):
     planC = pc.loadNiiScan(scan_file, imageType="CT SCAN")
     for struct_file in struct_files:
         name = _get_img_ext(struct_file)
-        is_binary = len(np.unique(sitk.GetArrayViewFromImage(sitk.ReadImage(struct_file)))) <= 2
+        is_binary = len(np.unique(sitk.GetArrayFromImage(sitk.ReadImage(struct_file)))) <= 2
         labels = {name: 1} if is_binary else {}
         planC = pc.loadNiiStructure(struct_file, 0, planC, labels)
     return planC
