@@ -37,13 +37,7 @@ The input file-format is inferred from the organization of data.
 See [Jupyter notebook](https://github.com/cerr/pyCERR-Notebooks/blob/main/autosegment_CT_HeadAndNeck_OARs.ipynb) for sample workflow. 
 
 ### Installation    
-* Use the [model installer](https://github.com/cerr/model_installer/) to download the trained models. 
-
-```
-git clone https://github.com/cerr/model_installer.git
-cd model_installer
-./installer.sh -m 6 -p N
-```
+* Use get_weights.py to download the trained models. 
 
 * Create a virtual environment and install dependencies (from [requirements.txt](https://github.com/cerr/CT_HeadAndNeck_OARs/blob/main/requirements.txt).
    

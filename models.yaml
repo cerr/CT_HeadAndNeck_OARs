@@ -1,0 +1,28 @@
+schema_version: 1
+models:
+  CT_HeadAndNeck_OARs:
+    status: validated
+    description: Head and neck OARs on CT (DeepLabV3+ ensembles + self-attention U-net)
+    modality: CT
+    labels: {    "*_chew_AI_seg.*":
+        1: "Left masseter"
+        2: "Right masseter"
+        3: "Left medial pterygoid"
+        4: "Right medial pterygoid"
+    "*_larynx_AI_seg.*":
+        1: "Larynx"
+    "*_cm_AI_seg.*":
+        1: "Pharyngeal constrictor"
+    "*_self_attn_AI_seg.*":
+        1: "Left Parotid"
+        2: "Right Parotid"
+        3: "Left Submandible"
+        4: "Right Submandible"
+        7: "Mandible"
+        8: "Spinal cord"
+        9: "Brain stem"
+        10: "Oral cavity"}
+    weights: {sha256: "<sha256 of the archive>", version: "1.0.0",
+              source: {type: url, url: H4sIAFsU02gAAwXBSQ6AIAwAwLuPoQeDJv4GqqwhBdpY9fXOJJHOB0Djimg8PQapASc3rxNYnGSE0YsN9sxlBreG+yWve1WtcWyxkFoTv+UH3C+jx0gAAAA=}}
+
+
