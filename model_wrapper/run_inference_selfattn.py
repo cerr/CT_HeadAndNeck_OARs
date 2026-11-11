@@ -301,11 +301,15 @@ def main(input_path, session_path, output_path, DCMexportFlag=False):
 
 
     # Select device
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    if torch.cuda.is_available():
+        device = torch.device("cuda")
+    elif getattr(torch.backends, "mps", None) is not None and torch.backends.mps.is_available():
+        device = torch.device("mps")
+    else:
+        device = torch.device("cpu")
     print("Using device:", device)
-    if torch.cuda.is_available(): 
-      model.netSeg_A.to(device)
-      model.netSeg_B.to(device)
+    model.netSeg_A.to(device)
+    model.netSeg_B.to(device)
     label_map = np.zeros((input_size, input_size, length),
                              dtype=np.uint8)
 

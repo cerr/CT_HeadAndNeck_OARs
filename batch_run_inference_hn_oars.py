@@ -2,6 +2,7 @@ import sys
 import os
 
 from pathlib import Path
+import traceback
 
 from model_wrapper import run_inference_deeplab, run_inference_selfattn
 from model_wrapper.proc_input import _is_nii_file, _is_nii_dir, _is_dicom_dir, _get_img_ext

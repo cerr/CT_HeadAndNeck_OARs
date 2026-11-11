@@ -99,17 +99,18 @@ class Chewing(object):
             self.cuda = True
             print('GPU device count: ', torch.cuda.device_count())
             device = torch.device("cuda:0")
-            with gzip.open(self.modelPath, "rb") as f:
-                state_dict = torch.load(f, map_location=device)
-            self.model.load_state_dict(state_dict)
-            self.model = self.model.to(device) 
+        elif getattr(torch.backends, 'mps', None) is not None and torch.backends.mps.is_available():
+             print('Using GPU')
+             device = torch.device('mps')
         else:
             self.cuda = False
             print('Using CPU')
             device = torch.device('cpu')
-            with gzip.open(self.modelPath, "rb") as f:
-                state_dict = torch.load(f, map_location=device)
-            self.model.load_state_dict(state_dict)
+
+        with gzip.open(self.modelPath, "rb") as f:
+            state_dict = torch.load(f, map_location=device)
+        self.model.load_state_dict(state_dict)
+        self.model = self.model.to(device)
 
         print("%.1f" %(process_time() - t1) + ' s')
         print('Loaded.')
@@ -136,8 +137,7 @@ class Chewing(object):
             width = imgSiz[1][0]
             fileList.extend(sample['fname'])
 
-            if self.cuda:
-                image = image.cuda()
+            image = image.to(device)
             with torch.no_grad():
                 output = self.model(image)
 
