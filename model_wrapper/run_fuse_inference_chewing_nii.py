@@ -56,16 +56,17 @@ class Chewing(object):
             self.mean = (0.2306, 0.2306, 0.2306)
             self.std = (0.2093, 0.2093, 0.2093)
             self.dataPath =  os.path.join(self.inputDir,'axial')
-            self.modelPath = os.path.join(cDir, 'models', 'MM_PM_Ax_model_state.pth.gz')
+            self.modelPath = os.path.join(cDir, 'weights', 'CT_HeadAndNeck_OARs', 'MM_PM_Ax_model_state.pth.gz')
+
         elif view == 'sagittal':
             self.mean = (0.2412, 0.2412, 0.2412)
             self.std = (0.1943, 0.1943, 0.1943)
-            self.modelPath = os.path.join(cDir, 'models', 'MM_PM_Sag_model_state.pth.gz')
+            self.modelPath = os.path.join(cDir, 'weights', 'CT_HeadAndNeck_OARs', 'MM_PM_Sag_model_state.pth.gz')
             self.dataPath = os.path.join(self.inputDir,'sagittal')
         elif view == 'coronal':
             self.mean = (0.2663, 0.2663, 0.2663)
             self.std = (0.2081, 0.2081, 0.2081)
-            self.modelPath = os.path.join(cDir, 'models', 'MM_PM_Cor_model_state.pth.gz')
+            self.modelPath = os.path.join(cDir, 'weights', 'CT_HeadAndNeck_OARs', 'MM_PM_Cor_model_state.pth.gz')
             self.dataPath = os.path.join(self.inputDir,'coronal')
         else:
             raise ValueError('Invalid input view = %s' %(view))

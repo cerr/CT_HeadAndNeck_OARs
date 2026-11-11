@@ -55,16 +55,16 @@ class Larynx(object):
             self.mean = (0.3416, 0.3416, 0.3416)
             self.std = (0.1889, 0.1889, 0.1889)
             self.dataPath =  os.path.join(self.inputDir,'axial')
-            self.modelPath = os.path.join(cDir, 'models', 'Larynx_Ax_model_state.pth.gz')
+            self.modelPath = os.path.join(cDir,'weights', 'CT_HeadAndNeck_OARs', 'Larynx_Ax_model_state.pth.gz')
         elif view == 'sagittal':
             self.mean = (0.3157, 0.3157, 0.3157)
             self.std = (0.1803, 0.1803, 0.1803)
-            self.modelPath = os.path.join(cDir, 'models', 'Larynx_Sag_model_state.pth.gz')
+            self.modelPath = os.path.join(cDir, 'weights', 'CT_HeadAndNeck_OARs', 'Larynx_Sag_model_state.pth.gz') 
             self.dataPath = os.path.join(self.inputDir,'sagittal')
         elif view == 'coronal':
             self.mean = (0.3233, 0.3233, 0.3233)
             self.std = (0.1917, 0.1917, 0.1917)
-            self.modelPath = os.path.join(cDir, 'models', 'Larynx_Cor_model_state.pth.gz')
+            self.modelPath = os.path.join(cDir, 'weights', 'CT_HeadAndNeck_OARs', 'Larynx_Cor_model_state.pth.gz')
             self.dataPath = os.path.join(self.inputDir,'coronal')
         else:
             raise ValueError('Invalid input view = %s' %(view))

@@ -144,7 +144,7 @@ class ResNet(nn.Module):
     def _load_pretrained_model(self):
        
         homeDir = Path(__file__).parents[3]
-        mDir = os.path.join(homeDir,'models','resnet')
+        mDir = os.path.join(homeDir,'weights','CT_HeadAndNeck_OARs','resnet')
         pretrain_dict = model_zoo.load_url('https://download.pytorch.org/models/resnet101-5d3b4d8f.pth',model_dir=mDir)
 
         model_dict = {}

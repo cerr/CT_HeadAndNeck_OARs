@@ -56,16 +56,16 @@ class Constrictor(object):
             self.mean = (0.3516, 0.3516, 0.3516)
             self.std = (0.2203, 0.2203, 0.2203)
             self.dataPath = os.path.join(self.inputDir,'axial')
-            self.modelPath = os.path.join(cDir, 'models', 'CM_Ax_model_state.pth.gz')
+            self.modelPath = os.path.join(cDir, 'weights', 'CT_HeadAndNeck_OARs','CM_Ax_model_state.pth.gz')
         elif view == 'sagittal':
             self.mean = (0.3186, 0.3186, 0.3186)
             self.std = (0.1975, 0.1975, 0.1975)
-            self.modelPath = os.path.join(cDir, 'models', 'CM_Sag_model_state.pth.gz')
+            self.modelPath = os.path.join(cDir, 'weights', 'CT_HeadAndNeck_OARs', 'CM_Sag_model_state.pth.gz')
             self.dataPath = os.path.join(self.inputDir,'sagittal')
         elif view == 'coronal':
-            self.mean = (0.3253, 0.3253, 0.3253),
+            self.mean = (0.3253, 0.3253, 0.3253)
             self.std = (0.1937, 0.1937, 0.1937)
-            self.modelPath = os.path.join(cDir, 'models', 'CM_Cor_model_state.pth.gz')
+            self.modelPath = os.path.join(cDir, 'weights', 'CT_HeadAndNeck_OARs', 'CM_Cor_model_state.pth.gz')
             self.dataPath = os.path.join(self.inputDir,'coronal')
         else:
             raise ValueError('Invalid input view = %s' %(view))
@@ -173,7 +173,7 @@ def main(inputPath, outputPath):
 
     # Get probability maps from different views
     print('Beginning inference...')
-    sharedNw = self.model = DeepLab(num_classes=self.nClass,
+    sharedNw = self.model = DeepLab(num_classes=N_CLASS,
                              backbone='resnet',
                              output_stride=16,
                              sync_bn=False,
