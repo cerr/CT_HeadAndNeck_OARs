@@ -1,8 +1,8 @@
 """Install the CT_HeadAndNeck_OARs weights into weights/CT_HeadAndNeck_OARs/.
-
-    python get_weights.py --model CT_HeadAndNeck_OARs --url <hashed link>
-    python get_weights.py --model CT_HeadAndNeck_OARs --file /path/to/weights.tar.gz
-"""
+-
+-    python get_weights.py --model CT_HeadAndNeck_OARs --url <hashed link>
+-    python get_weights.py --model CT_HeadAndNeck_OARs --file /path/to/weights.tar.gz
+-"""
 import argparse, base64, gzip, os, re, shutil, sys, tarfile, tempfile, urllib.request
 
 MODEL = 'CT_HeadAndNeck_OARs'
@@ -92,11 +92,19 @@ def is_installed():
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument('--model', required=True, choices=[MODEL], help='model name')
-    src = ap.add_mutually_exclusive_group(required=True)
+    src = ap.add_mutually_exclusive_group()
     src.add_argument('--url', help='hashed download link you received for this model')
     src.add_argument('--file', help='already-downloaded weights archive (.tar.gz)')
     ap.add_argument('--force', action='store_true', help='replace weights that are already installed')
     args = ap.parse_args()
+
+    # Default to the weights source in models.yaml
+    if not (args.url or args.file):
+        with open(os.path.join(REPO_DIR, 'models.yaml')) as f:
+            m = re.search(r'^\s*url:\s*(\S+)', f.read(), re.M)
+        if not m:
+            sys.exit("No --url or --file given, and models.yaml lists no weights source.")
+        args.url = m.group(1)
 
     if is_installed() and not args.force:
         sys.exit(f"Already installed: {DEST} (use --force to replace)")
