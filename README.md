@@ -37,22 +37,29 @@ The input file-format is inferred from the organization of data.
 See [Jupyter notebook](https://github.com/cerr/pyCERR-Notebooks/blob/main/autosegment_CT_HeadAndNeck_OARs.ipynb) for sample workflow. 
 
 ### Installation    
-* Use get_weights.py to download the trained models. 
-
-* Create a virtual environment and install dependencies (from [requirements.txt](https://github.com/cerr/CT_HeadAndNeck_OARs/blob/main/requirements.txt).
-   
+* Create a virtual environment and install dependencies
+ 
+Using [pyCERR]((https://github.com/cerr/pycerr)
+```
+from cerr import ai_models
+ai_models.install('CT_HeadAndNeck_OARs', installDir)
+```
+  
 Using [uv](https://github.com/astral-sh/uv)
 ```
-uv venv .venv 
-source .venv/bin/activate
-uv pip install --no-deps -r  requirements.txt --extra-index-url https://download.pytorch.org/whl/cu92 --index-strategy unsafe-best-match
+uv venv .venv --python 3.8 
+uv pip install -p .venv --no-deps --find-links https://download.pytorch.org/whl/torch_stable.html -r  requirements/req1.txt --extra-index-url https://download.pytorch.org/whl/cu92 --index-strategy unsafe-best-match
 ```
         
-Or using Conda:    
+Using Conda:    
 ```
 conda create -y --name CT_HeadAndNeckOARs python=3.8.19
 conda activate CT_HeadAndNeckOARs
-pip install -r requirements.txt  
+pip install -r requirements/req1.txt  
+```
+* Use get_weights.py to download the trained models.
+```
+.venv/bin/python get_weights.py --model CT_HeadAndNeck_OARs --url <hashed link>
 ```
   
 ## Running pre-trained models  
@@ -60,7 +67,7 @@ pip install -r requirements.txt
 ```
 ### CT cohort   
 ```
-python batch_run_inference_hn_oars.py <input_path> <session_path> <output_path>
+python run_segmentation.py --model CT_HeadAndNeck_OARs --data_dir <input_path> --results_dir <output_path> --sesion_dir <session_path>
 ```
   
 ## Citing this work
