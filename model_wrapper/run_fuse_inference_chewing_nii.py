@@ -111,6 +111,7 @@ class Chewing(object):
             state_dict = torch.load(f, map_location=device)
         self.model.load_state_dict(state_dict)
         self.model = self.model.to(device)
+        self.device = device
 
         print("%.1f" %(process_time() - t1) + ' s')
         print('Loaded.')
@@ -137,7 +138,7 @@ class Chewing(object):
             width = imgSiz[1][0]
             fileList.extend(sample['fname'])
 
-            image = image.to(device)
+            image = image.to(self.device)
             with torch.no_grad():
                 output = self.model(image)
 
